@@ -1,0 +1,162 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #111;
+    font-family: 'Momo Sans', sans-serif;
+}
+
+#score,
+#multiplier {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 32px;
+    z-index: 10;
+}
+
+#score {
+    top: 20px;
+}
+
+#multiplier {
+    top: 60px;
+}
+
+#upgradeBtn {
+    position: absolute;
+    top: 100px;
+    left: 20px;
+    padding: 8px 16px;
+    background: #222;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+#upgradeBtn:hover {
+    background: #333;
+}
+
+#upgradeMenu {
+    position: absolute;
+    top: 140px;
+    left: -220px;
+    width: 200px;
+    background: #222;
+    color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 2px 2px 10px #000;
+}
+
+#upgradeMenu.show {
+    left: 20px;
+    transition: left 0.3s;
+}
+
+#upgradeMenu.hide {
+    left: -220px;
+    transition: left 0.3s;
+}
+
+#upgradeMenu button {
+    display: block;
+    width: 100%;
+    padding: 8px 0;
+    margin: 8px 0;
+    background: #222;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 4px;
+    position: relative;
+}
+
+#upgradeMenu button:hover {
+    background: #333;
+}
+
+#upgradeMenu button .tooltip {
+    visibility: hidden;
+    background: #000;
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 4px 8px;
+    position: absolute;
+    left: 105%;
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+#upgradeMenu button:hover .tooltip {
+    visibility: visible;
+}
+
+#loadingText {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    text-align: center;
+    color: white;
+    font-size: 28px;
+    z-index: 20;
+}
+
+#multiplier{
+    font-size: 20px;
+}
+
+#prestigeBar{
+    overflow: hidden;
+    margin-bottom: 30px;
+    margin-top: 0px;
+}
+
+#prestigeBtn {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    background: linear-gradient(90deg, #ff9100, #ff3d00);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 20px;
+    cursor: pointer;
+    display: none; /* stays hidden until unlocked */
+    box-shadow: 0 0 12px #ff5f00aa;
+    transition: 0.2s;
+    z-index: 20;
+}
+
+#prestigeBtn:hover {
+    scale: 1.05;
+    box-shadow: 0 0 18px #ff5f00dd;
+}
+
+#prestigeBar {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40%;
+    height: 18px;
+    background: #222;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 10px #000;
+}
+
+#prestigeFill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ffa600, #ff4800);
+    border-radius: 12px;
+    transition: width 0.2s;
+}
