@@ -180,7 +180,7 @@
         z-index: 50;
     }
 
-    #upgradeMenu button{
+    #upgradeMenu button {
         background: #222;
         color: #fff;
         border: none;
@@ -192,6 +192,7 @@
 
     #upgradeMenu button:hover {
         background: #333;
+
         .tooltip {
             visibility: visible;
             opacity: 1;
@@ -224,4 +225,47 @@
         border-width: 5px;
         border-style: solid;
         border-color: #333 transparent transparent transparent;
+    }
+
+    /* save popup */
+    #savePopup {
+        position: fixed;
+        left: 20px;
+        bottom: 20px;
+        min-width: 180px;
+        max-width: 320px;
+        padding: 12px 14px;
+        background: linear-gradient(90deg, #222, #2b2b2b);
+        color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+        display: none;
+        /* hidden by default */
+        align-items: center;
+        gap: 10px;
+        z-index: 9999;
+        /* above canvas */
+        font-family: sans-serif;
+        font-size: 14px;
+    }
+
+    /* message text */
+    #savePopup .msg {
+        flex: 1;
+    }
+
+    /* close button */
+    #savePopup .close {
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 6px;
+    }
+
+    #savePopup .close:focus {
+        outline: 2px solid #fff6;
     }
