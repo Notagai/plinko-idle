@@ -1,3 +1,3 @@
-##plinko idle
+## plinko idle
 
 just play the game
