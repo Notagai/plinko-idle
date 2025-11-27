@@ -12,6 +12,12 @@ window.onload = () => {
     let totalScore = 0;
     let scoreMultiplier = 1;
     let ballRadius = 16;
+    let prestigeCount = 0;
+
+    let totalBallsDropped = 0;
+    let addBallPurchases = 0;
+    let slotUpgradePurchases = 0;
+    let unlockedAchievements = [];
 
     const scoreEl = document.getElementById("score");
     const multiplierEl = document.getElementById("multiplier");
@@ -20,12 +26,28 @@ window.onload = () => {
 
     const addBallBtn = document.getElementById("addBallBtn");
     const tooltip = addBallBtn.querySelector(".tooltip");
+    const addBallCostEl = document.getElementById("addBallCost");
 
     const upgradeBtn2 = document.getElementById("slotUpgradeBtn");
     const upgradeCostEl = upgradeBtn2.querySelector(".tooltip");
+    const slotUpgradeCostEl = document.getElementById("slotUpgradeCost");
 
     let slotUpgradeCost = 1;
     let addBallCost = 2000;
+
+    // Tab switching
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.tab;
+            // Hide all tab panes
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            // Show selected
+            document.getElementById(tabName + '-tab').classList.add('active');
+            tab.classList.add('active');
+        });
+    });
 
     const horizontalSpacing = 50;
     const verticalSpacing = 60;
@@ -33,7 +55,8 @@ window.onload = () => {
     const colsStart = 5;
     const gravity = 0.2;
     const friction = 0.995;
-    const delta = 0.6;
+    let delta = 0.6;
+    let lastTime = performance.now();
 
     const pegs = [];
     const balls = [];
@@ -54,6 +77,14 @@ window.onload = () => {
         makePegs();
         buildWalls();
         buildSlots();
+
+        // Reset all balls to prevent cheating
+        for (let b of balls) {
+            b.x = canvas.width / 2;
+            b.y = 50;
+            b.vx = (Math.random() - 0.5) * 6;
+            b.vy = 1 + Math.random() * 2;
+        }
     }
 
     window.addEventListener("resize", resizeCanvas);
@@ -297,8 +328,14 @@ window.onload = () => {
                 totalScore += Math.round(best.points * scoreMultiplier);
                 scoreEl.innerText = "Score: " + totalScore;
 
+                totalBallsDropped++;
+
+                checkAchievements();
+
                 if (totalScore >= 100000) {
                     prestigeBtn.style.display = "block";
+                } else {
+                    prestigeBtn.style.display = "none";
                 }
 
                 progressFill.style.width = (Math.min(totalScore / 100000, 1) * 100) + "%";
@@ -323,12 +360,16 @@ window.onload = () => {
             balls.push(new Ball(canvas.width / 2, 50, ballRadius));
 
             addBallCost = Math.floor(addBallCost * 1.6);
-            tooltip.innerText = "Cost: " + addBallCost;
+            addBallCostEl.innerText = addBallCost;
+
+            addBallPurchases++;
+
+            checkAchievements();
         }
     });
 
     upgradeBtn2.addEventListener("click", () => {
-        if (scoreMultiplier > slotUpgradeCost) {
+        if (scoreMultiplier - slotUpgradeCost >= 1) {
 
             for (let s of slots) {
                 s.points *= 2;
@@ -337,14 +378,20 @@ window.onload = () => {
             scoreMultiplier -= slotUpgradeCost;
             slotUpgradeCost *= 2;
 
-            upgradeCostEl.innerText = "Cost: " + slotUpgradeCost;
+            slotUpgradeCostEl.innerText = slotUpgradeCost;
             multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
+
+            slotUpgradePurchases++;
+
+            checkAchievements();
         }
     });
 
     prestigeBtn.addEventListener("click", () => {
         scoreMultiplier += 0.5;
         multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
+
+        document.querySelector('.tab[data-tab="prestige"]').classList.remove("hide");
 
         totalScore = 0;
         scoreEl.innerText = "Score: " + totalScore;
@@ -355,12 +402,48 @@ window.onload = () => {
         balls.push(new Ball(canvas.width / 2, 50, ballRadius));
 
         addBallCost = 2000;
-        tooltip.innerText = "Cost: " + addBallCost;
+        addBallCostEl.innerText = addBallCost;
 
         prestigeBtn.style.display = "none";
+
+        prestigeCount++;
+
+        checkAchievements();
     });
 
+    // ----- ACHIEVEMENTS -----
+    function checkAchievements() {
+        for (let ach of achievements) {
+            if (!ach.unlocked && ach.condition({
+                totalScore,
+                totalBallsDropped,
+                prestigeCount,
+                scoreMultiplier,
+                addBallPurchases,
+                slotUpgradePurchases
+            })) {
+                ach.unlocked = true;
+                unlockedAchievements.push(ach.id);
+                showSavePopup(`Achievement Unlocked: ${ach.name}!`);
+                populateAchievements();
+            }
+        }
+    }
 
+    function populateAchievements() {
+        const list = document.getElementById("achievementsList");
+        list.innerHTML = "";
+        for (let ach of achievements) {
+            const div = document.createElement("div");
+            div.className = "achievement" + (ach.unlocked ? " unlocked" : "");
+            div.innerHTML = `
+                <h3>${ach.name}</h3>
+                <p>${ach.description}</p>
+                ${ach.unlocked ? '<span class="checkmark">✓</span>' : ''}
+            `;
+            list.appendChild(div);
+        }
+    }
 
     // ----- SAVE LOAD -----
     const save = JSON.parse(localStorage.getItem("plinkoSave") || "{}");
@@ -375,14 +458,20 @@ window.onload = () => {
         multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
     }
 
+    if (prestigeCount > 0) {
+        document.querySelector('.tab[data-tab="prestige"]').classList.remove("hide");
+    } else {
+        document.querySelector('.tab[data-tab="prestige"]').classList.add("hide");
+    }
+
     if (save.addBallCost !== undefined) {
         addBallCost = save.addBallCost;
-        tooltip.innerText = "Cost: " + addBallCost;
+        addBallCostEl.innerText = addBallCost;
     }
 
     if (save.slotUpgradeCost !== undefined) {
         slotUpgradeCost = save.slotUpgradeCost;
-        upgradeCostEl.innerText = "Cost: " + slotUpgradeCost;
+        slotUpgradeCostEl.innerText = slotUpgradeCost;
     }
 
     if (save.balls !== undefined) {
@@ -393,14 +482,51 @@ window.onload = () => {
         }
     }
 
+    if (save.prestigeCount !== undefined) {
+        prestigeCount = save.prestigeCount;
+    }
+
+    if (save.totalBallsDropped !== undefined) {
+        totalBallsDropped = save.totalBallsDropped;
+    }
+
+    if (save.addBallPurchases !== undefined) {
+        addBallPurchases = save.addBallPurchases;
+    }
+
+    if (save.slotUpgradePurchases !== undefined) {
+        slotUpgradePurchases = save.slotUpgradePurchases;
+    }
+
+    if (save.unlockedAchievements !== undefined) {
+        unlockedAchievements = save.unlockedAchievements;
+        for (let id of unlockedAchievements) {
+            let ach = achievements.find(a => a.id === id);
+            if (ach) {
+                ach.unlocked = true;
+            }
+        }
+    }
+
+    populateAchievements();
+
     if (balls.length === 0) {
         balls.push(new Ball(canvas.width / 2, 50, ballRadius));
+    }
+
+    if (totalScore >= 100000) {
+        prestigeBtn.style.display = "block";
     }
 
 
 
     // ----- MAIN LOOP -----
     function loop() {
+        const currentTime = performance.now();
+        const deltaTime = (currentTime - lastTime) / 1000;
+        lastTime = currentTime;
+        delta = deltaTime * 36; // adjust factor to maintain speed
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         drawPegs();
@@ -423,6 +549,10 @@ window.onload = () => {
     const savePopup = document.getElementById("savePopup");
     const savePopupMsg = savePopup.querySelector(".msg");
     const savePopupClose = savePopup.querySelector(".close");
+
+    const confirmPopup = document.getElementById("confirmPopup");
+    const confirmYes = document.getElementById("confirmYes");
+    const confirmNo = document.getElementById("confirmNo");
 
     let savePopupTimeout = null;
 
@@ -450,6 +580,189 @@ window.onload = () => {
 
     savePopupClose.addEventListener("click", hideSavePopup);
 
+    const manualSaveBtn = document.getElementById("manualSaveBtn");
+    manualSaveBtn.addEventListener("click", () => {
+        try {
+            localStorage.setItem(
+                "plinkoSave",
+                JSON.stringify({
+                    score: totalScore,
+                    multiplier: scoreMultiplier,
+                    addBallCost: addBallCost,
+                    slotUpgradeCost: slotUpgradeCost,
+                    balls: balls.length,
+                    prestigeCount: prestigeCount,
+                    totalBallsDropped: totalBallsDropped,
+                    addBallPurchases: addBallPurchases,
+                    slotUpgradePurchases: slotUpgradePurchases,
+                    unlockedAchievements: unlockedAchievements
+                })
+            );
+
+            showSavePopup("Game saved");
+        }
+
+        catch (error) {
+            showSavePopup("Save failed");
+            console.error("Save error:", error);
+        }
+    });
+
+    const clearSaveBtn = document.getElementById("clearSaveBtn");
+    clearSaveBtn.addEventListener("click", () => {
+        confirmPopup.style.display = "flex";
+    });
+
+    confirmYes.addEventListener("click", () => {
+        localStorage.removeItem("plinkoSave");
+
+        totalScore = 0;
+        scoreEl.innerText = "Score: " + totalScore;
+
+        scoreMultiplier = 1;
+        multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
+
+        addBallCost = 2000;
+        addBallCostEl.innerText = addBallCost;
+
+        slotUpgradeCost = 1;
+        slotUpgradeCostEl.innerText = slotUpgradeCost;
+
+        balls.length = 0;
+        balls.push(new Ball(canvas.width / 2, 50, ballRadius));
+
+        prestigeBtn.style.display = "none";
+        progressFill.style.width = "0%";
+
+        document.querySelector('.tab[data-tab="prestige"]').classList.add("hide");
+
+        prestigeCount = 0;
+
+        totalBallsDropped = 0;
+        addBallPurchases = 0;
+        slotUpgradePurchases = 0;
+        unlockedAchievements = [];
+
+        for (let ach of achievements) {
+            ach.unlocked = false;
+        }
+
+        populateAchievements();
+
+        confirmPopup.style.display = "none";
+
+        showSavePopup("Save cleared");
+    });
+
+    confirmNo.addEventListener("click", () => {
+        confirmPopup.style.display = "none";
+    });
+
+    // ----- EXPORT/IMPORT SAVE -----
+    const exportImportPopup = document.getElementById("exportImportPopup");
+    const saveDataTextarea = document.getElementById("saveDataTextarea");
+    const doExportBtn = document.getElementById("doExportBtn");
+    const doImportBtn = document.getElementById("doImportBtn");
+    const closeExportImport = document.getElementById("closeExportImport");
+    const exportSaveBtn = document.getElementById("exportSaveBtn");
+    const importSaveBtn = document.getElementById("importSaveBtn");
+
+    exportSaveBtn.addEventListener("click", () => {
+        const saveData = {
+            score: totalScore,
+            multiplier: scoreMultiplier,
+            addBallCost: addBallCost,
+            slotUpgradeCost: slotUpgradeCost,
+            balls: balls.length,
+            prestigeCount: prestigeCount
+        };
+        const json = JSON.stringify(saveData);
+        const base64 = btoa(json);
+        saveDataTextarea.value = base64;
+        exportImportPopup.style.display = "flex";
+    });
+
+    importSaveBtn.addEventListener("click", () => {
+        saveDataTextarea.value = "";
+        exportImportPopup.style.display = "flex";
+    });
+
+    doExportBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(saveDataTextarea.value).then(() => {
+            showSavePopup("Save data copied to clipboard");
+        }).catch(() => {
+            showSavePopup("Failed to copy to clipboard");
+        });
+    });
+
+    doImportBtn.addEventListener("click", () => {
+        try {
+            const base64 = saveDataTextarea.value.trim();
+            if (!base64) {
+                showSavePopup("No save data provided");
+                return;
+            }
+            const json = atob(base64);
+            const saveData = JSON.parse(json);
+
+            totalScore = saveData.score || 0;
+            scoreEl.innerText = "Score: " + totalScore;
+
+            scoreMultiplier = saveData.multiplier || 1;
+            multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
+
+            addBallCost = saveData.addBallCost || 2000;
+            addBallCostEl.innerText = addBallCost;
+
+            slotUpgradeCost = saveData.slotUpgradeCost || 1;
+            slotUpgradeCostEl.innerText = slotUpgradeCost;
+
+            balls.length = 0;
+            for (let i = 0; i < (saveData.balls || 1); i++) {
+                balls.push(new Ball(canvas.width / 2, 50, ballRadius));
+            }
+
+            prestigeCount = saveData.prestigeCount || 0;
+            totalBallsDropped = saveData.totalBallsDropped || 0;
+            addBallPurchases = saveData.addBallPurchases || 0;
+            slotUpgradePurchases = saveData.slotUpgradePurchases || 0;
+            unlockedAchievements = saveData.unlockedAchievements || [];
+
+            for (let id of unlockedAchievements) {
+                let ach = achievements.find(a => a.id === id);
+                if (ach) {
+                    ach.unlocked = true;
+                }
+            }
+
+            populateAchievements();
+
+            if (prestigeCount > 0) {
+                document.querySelector('.tab[data-tab="prestige"]').classList.remove("hide");
+            } else {
+                document.querySelector('.tab[data-tab="prestige"]').classList.add("hide");
+            }
+
+            if (totalScore >= 100000) {
+                prestigeBtn.style.display = "block";
+            } else {
+                prestigeBtn.style.display = "none";
+            }
+
+            progressFill.style.width = (Math.min(totalScore / 100000, 1) * 100) + "%";
+
+            exportImportPopup.style.display = "none";
+            showSavePopup("Save imported successfully");
+        } catch (error) {
+            showSavePopup("Import failed: Invalid save data");
+            console.error("Import error:", error);
+        }
+    });
+
+    closeExportImport.addEventListener("click", () => {
+        exportImportPopup.style.display = "none";
+    });
+
 
 
     // ----- PERIODIC SAVE -----
@@ -463,7 +776,12 @@ window.onload = () => {
                     multiplier: scoreMultiplier,
                     addBallCost: addBallCost,
                     slotUpgradeCost: slotUpgradeCost,
-                    balls: balls.length
+                    balls: balls.length,
+                    prestigeCount: prestigeCount,
+                    totalBallsDropped: totalBallsDropped,
+                    addBallPurchases: addBallPurchases,
+                    slotUpgradePurchases: slotUpgradePurchases,
+                    unlockedAchievements: unlockedAchievements
                 })
             );
 
@@ -475,6 +793,6 @@ window.onload = () => {
             console.error("Save error:", error);
         }
 
-    }, 120000);
+    }, 60000);
 
 };

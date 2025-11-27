@@ -4,8 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plinko Game</title>
+    <title>Plinko Idle</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
 
 <body>
@@ -24,16 +25,73 @@
     <canvas id="game"></canvas>
 
     <div id="upgradeMenu" class="hide">
-        <h2>Upgrades</h2>
-        <button id="addBallBtn">Add Ball <span class="tooltip">Cost: 2000</span></button>
-        <button id="slotUpgradeBtn">Double Slots <span class="tooltip">Cost: 1</span></button>
+        <div class="tabs">
+            <button class="tab active" data-tab="regular">Upgrades</button>
+            <button class="tab" data-tab="prestige">Prestige Upgrades</button>
+            <button class="tab" data-tab="achievements">Achievements</button>
+            <button class="tab" data-tab="controls">Game Controls</button>
+        </div>
+        <div class="tab-content">
+            <div id="regular-tab" class="tab-pane active">
+                <h2>Upgrades</h2>
+                <button id="addBallBtn">
+                    Add Ball
+                    <span class="tooltip">
+                        Adds another ball to the game. The more the merrier!
+                        <hr>
+                        Costs: <span id="addBallCost">2000</span> points.
+                    </span>
+                </button>
+            </div>
+            <div id="prestige-tab" class="tab-pane">
+                <h2 id="pUpTitle">Prestige Upgrades</h2>
+                <button id="slotUpgradeBtn">
+                    Double Slots
+                    <span class="tooltip">
+                        Doubles the points of all slots for higher scores.
+                        <hr>
+                        Costs: <span id="slotUpgradeCost">1</span> multiplier.
+                    </span>
+                </button>
+            </div>
+            <div id="achievements-tab" class="tab-pane">
+                <h2>Achievements</h2>
+                <div id="achievementsList"></div>
+            </div>
+            <div id="controls-tab" class="tab-pane">
+                <h2>Game Controls</h2>
+                <button id="manualSaveBtn">Save Game</button>
+                <button id="clearSaveBtn">Clear Save</button>
+                <button id="exportSaveBtn">Export Save</button>
+                <button id="importSaveBtn">Import Save</button>
+            </div>
+        </div>
     </div>
 
+    <script src="achievements.js"></script>
     <script src="main.js"></script>
 
     <div id="savePopup" role="status" aria-live="polite">
         <span class="msg">Game saved</span>
         <button class="close" aria-label="Close">×</button>
+    </div>
+
+    <div id="confirmPopup" role="dialog" aria-labelledby="confirmMsg">
+        <span id="confirmMsg">Are you sure you want to clear your save? This cannot be undone.</span>
+        <div>
+            <button id="confirmYes">Yes</button>
+            <button id="confirmNo">No</button>
+        </div>
+    </div>
+
+    <div id="exportImportPopup" role="dialog">
+        <h3>Export/Import Save</h3>
+        <textarea id="saveDataTextarea" placeholder="Your save data will appear here for export, or paste here for import"></textarea>
+        <div>
+            <button id="doExportBtn">Export</button>
+            <button id="doImportBtn">Import</button>
+            <button id="closeExportImport">Close</button>
+        </div>
     </div>
 
 </body>
