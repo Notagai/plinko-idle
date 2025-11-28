@@ -2,76 +2,158 @@
 // Modular list of achievements - add new ones here
 
 const achievements = [
-    {
-        id: "score_10k",
+    { //welcome
+        id: "welcome",
         name: "Welcome to Plinko!",
-        description: "Open the game",
+        description: "Welcome to the game!",
+        hint: "\"It's a slippery slope from here.\"",
         condition: (state) => state.totalScore >= 0,
-        unlocked: true
+        unlocked: false
+    },
+    { //score-pres
+        id: "score_500",
+        name: "First Points",
+        description: "Score some points",
+        hint: "\"How many did you get?\"",
+        condition: (state) => state.totalScore >= 500,
+        unlocked: false
     },
     {
         id: "score_100k",
         name: "Fill The Bar",
-        description: "Something might unlock...",
+        description: "Fill the bar at the bottom! Hint: 100k score",
+        hint: "\"While it seems like a lot, the big numbers only get bigger from here.\"",
         condition: (state) => state.totalScore >= 100000,
         unlocked: false
     },
     {
         id: "score_1m",
-        name: "Millionaire",
-        description: "Reach 1,000,000 points",
+        name: "A Millionaire!",
+        description: "Score a million points in one prestige!",
+        hint: "\"You're getting there!\"",
         condition: (state) => state.totalScore >= 1000000,
+        unlocked: false
+    },
+    { //score-life
+        id: "score_1m",
+        name: "Sad Millionaire",
+        description: "Score a million points... just not in one prestige. (Lifetime)",
+        hint: "\"How many times are you gonna keep resetting?\"",
+        condition: (state) => state.lifetimeScore >= 1000000,
+        unlocked: false
+    }, 
+    {
+        id: "score_10m",
+        name: "Ten Million!",
+        description: "Score ten million points in your lifetime.",
+        hint: "\"Now we're talking! Maybe gambling has paid off after all!\"",
+        condition: (state) => state.lifetimeScore >= 10000000,
+        unlocked: false
+    },
+    {
+        id: "score_100m",
+        name: "Hundred Millionaire",
+        description: "Score a hundred million points in your lifetime.",
+        hint: "\"You're a millionaire now, but you're not done yet!\"",
+        condition: (state) => state.lifetimeScore >= 100000000,
+        unlocked: false
+    },
+    { //ball
+        id: "balls_10",
+        name: "Ten Balls!",
+        description: "Drop ten balls!",
+        hint: "\"Ten isn't enough for making a new generation, let alone generational wealth\"",
+        condition: (state) => state.totalBallsDropped >= 10,
         unlocked: false
     },
     {
         id: "balls_100",
-        name: "Ball Dropper",
-        description: "Drop 100 balls",
+        name: "A Hundred Balls!",
+        description: "Drop a hundred balls in one prestige!",
+        hint: "\"You're on your way to becoming a millionaire!\"",
         condition: (state) => state.totalBallsDropped >= 100,
         unlocked: false
     },
     {
         id: "balls_1000",
-        name: "Ball Enthusiast",
-        description: "Drop 1,000 balls",
+        name: "A Thousand Balls!",
+        description: "Drop a thousand balls in one prestige!",
+        hint: "\"Are you a millionaire yet?\"",
         condition: (state) => state.totalBallsDropped >= 1000,
         unlocked: false
     },
+    { //balls-life
+        id: "balls_1000",
+        name: "A Sad Thousand Balls!",
+        description: "Drop a thousand balls in your lifetime!",
+        hint: "\"Nice... how long did this take?\"",
+        condition: (state) => state.lifetimeBallsDropped >= 1000,
+        unlocked: false
+    },
     {
+        id: "balls_10000",
+        name: "Ten Thousand Balls!",
+        description: "Drop ten thousand balls in your lifetime!",
+        hint: "\"Time doesn't matter to you anymore, does it?\"",
+        condition: (state) => state.lifetimeBallsDropped >= 10000,
+        unlocked: false
+    },
+    { //upg
+        id: "upgrades_1",
+        name: "First Upgrade",
+        description: "Buy an upgrade!",
+        hint: "Purchase 1 upgrade",
+        condition: (state) => state.totalUpgrades >= 1,
+        unlocked: false
+    },
+    {
+        id: "upgrades_10",
+        name: "Ten Times",
+        description: "Buy 10 upgrades. (lifetime)",
+        hint: "\"You'll need a lot more to get far...\"",
+        condition: (state) => state.totalUpgrades >= 10,
+        unlocked: false
+    },
+    {
+        id: "upgrades_100",
+        name: "A Hundred Of Them!",
+        description: "Buy a hundred upgrades!",
+        hint: "\"You've got it, keep doing that!\"",
+        condition: (state) => state.totalUpgrades >= 100,
+        unlocked: false
+    },
+    {
+        id: "upgrades_1000",
+        name: "Thousands and Thousands",
+        description: "Buy a thousand upgrades!",
+        hint: "\"I don't even know how you do this\"",
+        condition: (state) => state.totalUpgrades >= 1000,
+        unlocked: false
+    },
+    { //pres
         id: "prestige_1",
         name: "First Prestige",
         description: "Prestige for the first time",
+        hint: "\"Prestige!!\"",
         condition: (state) => state.prestigeCount >= 1,
         unlocked: false
     },
     {
-        id: "prestige_5",
-        name: "Prestige Veteran",
-        description: "Prestige 5 times",
-        condition: (state) => state.prestigeCount >= 5,
+        id: "prestige_10",
+        name: "Ten Prestiges",
+        description: "Prestige ten times",
+        hint: "\"You're getting good at this!\"",
+        condition: (state) => state.prestigeCount >= 10,
         unlocked: false
     },
     {
-        id: "multiplier_5",
-        name: "Multiplier Expert",
-        description: "Reach x5.0 multiplier",
-        condition: (state) => state.scoreMultiplier >= 5.0,
+        id: "prestige_100",
+        name: "A Hundred Prestiges",
+        description: "Prestige a hundred times",
+        hint: "\"You're... gambling through different dimensions. w h a t\"",
+        condition: (state) => state.prestigeCount >= 100,
         unlocked: false
     },
-    {
-        id: "add_ball_5",
-        name: "Ball Collector",
-        description: "Buy a lot of balls!",
-        condition: (state) => state.addBallPurchases >= 5,
-        unlocked: false
-    },
-    {
-        id: "slot_upgrade_5",
-        name: "Slot Master",
-        description: "Upgrade your slots a ton!",
-        condition: (state) => state.slotUpgradePurchases >= 5,
-        unlocked: false
-    }
 ];
 
 // Export for use in main.js

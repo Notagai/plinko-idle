@@ -9,15 +9,19 @@ window.onload = () => {
         upgradeMenu.classList.remove("hide");
     }
 
-    let totalScore = 0;
-    let scoreMultiplier = 1;
-    let ballRadius = 16;
-    let prestigeCount = 0;
+    let totalScore = 0; //resets on prestige
+    let lifetimeScore = 0; //lifetime, does not reset
+    let scoreMultiplier = 1; //multi
+    let ballRadius = 16; //ball size
+    let prestigeCount = 0; //total prestiges, does not reset even on next layers
 
     let totalBallsDropped = 0;
-    let addBallPurchases = 0;
+    let totalUpgrades = 0;
     let slotUpgradePurchases = 0;
     let unlockedAchievements = [];
+    let totalCriticalHits = 0;
+    let critUpgradePurchases = 0;
+    let critUpgradeCost = 0.5;
 
     const scoreEl = document.getElementById("score");
     const multiplierEl = document.getElementById("multiplier");
@@ -31,6 +35,10 @@ window.onload = () => {
     const upgradeBtn2 = document.getElementById("slotUpgradeBtn");
     const upgradeCostEl = upgradeBtn2.querySelector(".tooltip");
     const slotUpgradeCostEl = document.getElementById("slotUpgradeCost");
+
+    const critUpgradeBtn = document.getElementById("critUpgradeBtn");
+    const critUpgradeCostEl = document.getElementById("critUpgradeCost");
+    const critChanceEl = document.getElementById("critChance");
 
     let slotUpgradeCost = 1;
     let addBallCost = 2000;
@@ -48,6 +56,18 @@ window.onload = () => {
             tab.classList.add('active');
         });
     });
+    // ----- NUMBER FORMATTING -----
+    function formatNumber(num) {
+        if (num < 1000000) return num.toLocaleString();
+        const suffixes = ['million', 'billion', 'trillion', 'quadrillion', 'quintillion', 'sextillion', 'septillion', 'octillion', 'nonillion', 'decillion'];
+        let exponent = Math.floor(Math.log10(num));
+        let index = Math.floor(exponent / 3) - 2;
+        if (index < 0) index = 0;
+        if (index >= suffixes.length) index = suffixes.length - 1;
+        let divisor = Math.pow(10, 3 * (index + 2));
+        let value = num / divisor;
+        return value.toFixed(3) + ' ' + suffixes[index];
+    }
 
     const horizontalSpacing = 50;
     const verticalSpacing = 60;
@@ -67,7 +87,7 @@ window.onload = () => {
 
     // ----- CANVAS RESIZE -----
     function resizeCanvas() {
-        canvas.width = canvas.parentElement.clientWidth;
+        canvas.width = window.innerWidth / 2;
         canvas.height = window.innerHeight;
 
         pegs.length = 0;
@@ -325,11 +345,25 @@ window.onload = () => {
             if (best !== null) {
                 best.offsetY = -5;
 
-                totalScore += Math.round(best.points * scoreMultiplier);
-                scoreEl.innerText = "Score: " + totalScore;
+                let scoreGained = Math.round(best.points * scoreMultiplier);
+
+                // Critical hit check
+                let critChance = Math.min(0.5, (best.points - 1000) / 10000 + critUpgradePurchases * 0.05);
+                let isCrit = Math.random() < critChance;
+                if (isCrit) {
+                    let critMultiplier = 2 + prestigeCount * 0.2;
+                    scoreGained = Math.round(scoreGained * critMultiplier);
+                    totalCriticalHits++;
+                    showSavePopup(`CRITICAL HIT! x${critMultiplier.toFixed(1)}`);
+                }
+
+                totalScore += scoreGained;
+                lifetimeScore += scoreGained;
+                scoreEl.innerText = "Score: " + formatNumber(totalScore);
 
                 totalBallsDropped++;
 
+                populateStats();
                 checkAchievements();
 
                 if (totalScore >= 100000) {
@@ -355,15 +389,16 @@ window.onload = () => {
         if (totalScore >= addBallCost) {
 
             totalScore -= addBallCost;
-            scoreEl.innerText = "Score: " + totalScore;
+            scoreEl.innerText = "Score: " + formatNumber(totalScore);
 
             balls.push(new Ball(canvas.width / 2, 50, ballRadius));
 
             addBallCost = Math.floor(addBallCost * 1.6);
             addBallCostEl.innerText = addBallCost;
 
-            addBallPurchases++;
+            totalUpgrades++;
 
+            populateStats();
             checkAchievements();
         }
     });
@@ -381,8 +416,29 @@ window.onload = () => {
             slotUpgradeCostEl.innerText = slotUpgradeCost;
             multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
 
+            totalUpgrades++;
             slotUpgradePurchases++;
 
+            populateStats();
+            checkAchievements();
+        }
+    });
+
+    critUpgradeBtn.addEventListener("click", () => {
+        if (scoreMultiplier - critUpgradeCost >= 1) {
+
+            scoreMultiplier -= critUpgradeCost;
+
+            critUpgradeCost += 0.5;
+
+            critUpgradeCostEl.innerText = critUpgradeCost;
+            multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
+
+            totalUpgrades++;
+            critUpgradePurchases++;
+            critChanceEl.innerText = `Crit Chance Bonus: ${critUpgradePurchases * 5}%`;
+
+            populateStats();
             checkAchievements();
         }
     });
@@ -394,7 +450,7 @@ window.onload = () => {
         document.querySelector('.tab[data-tab="prestige"]').classList.remove("hide");
 
         totalScore = 0;
-        scoreEl.innerText = "Score: " + totalScore;
+        scoreEl.innerText = "Score: " + formatNumber(totalScore);
 
         progressFill.style.width = "0%";
 
@@ -410,140 +466,6 @@ window.onload = () => {
 
         checkAchievements();
     });
-
-    // ----- ACHIEVEMENTS -----
-    function checkAchievements() {
-        for (let ach of achievements) {
-            if (!ach.unlocked && ach.condition({
-                totalScore,
-                totalBallsDropped,
-                prestigeCount,
-                scoreMultiplier,
-                addBallPurchases,
-                slotUpgradePurchases
-            })) {
-                ach.unlocked = true;
-                unlockedAchievements.push(ach.id);
-                showSavePopup(`Achievement Unlocked: ${ach.name}!`);
-                populateAchievements();
-            }
-        }
-    }
-
-    function populateAchievements() {
-        const list = document.getElementById("achievementsList");
-        list.innerHTML = "";
-        for (let ach of achievements) {
-            const div = document.createElement("div");
-            div.className = "achievement" + (ach.unlocked ? " unlocked" : "");
-            div.innerHTML = `
-                <h3>${ach.name}</h3>
-                <p>${ach.description}</p>
-                ${ach.unlocked ? '<span class="checkmark">✓</span>' : ''}
-            `;
-            list.appendChild(div);
-        }
-    }
-
-    // ----- SAVE LOAD -----
-    const save = JSON.parse(localStorage.getItem("plinkoSave") || "{}");
-
-    if (save.score !== undefined) {
-        totalScore = save.score;
-        scoreEl.innerText = "Score: " + totalScore;
-    }
-
-    if (save.multiplier !== undefined) {
-        scoreMultiplier = save.multiplier;
-        multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
-    }
-
-    if (prestigeCount > 0) {
-        document.querySelector('.tab[data-tab="prestige"]').classList.remove("hide");
-    } else {
-        document.querySelector('.tab[data-tab="prestige"]').classList.add("hide");
-    }
-
-    if (save.addBallCost !== undefined) {
-        addBallCost = save.addBallCost;
-        addBallCostEl.innerText = addBallCost;
-    }
-
-    if (save.slotUpgradeCost !== undefined) {
-        slotUpgradeCost = save.slotUpgradeCost;
-        slotUpgradeCostEl.innerText = slotUpgradeCost;
-    }
-
-    if (save.balls !== undefined) {
-        balls.length = 0;
-
-        for (let i = 0; i < save.balls; i++) {
-            balls.push(new Ball(canvas.width / 2, 50, ballRadius));
-        }
-    }
-
-    if (save.prestigeCount !== undefined) {
-        prestigeCount = save.prestigeCount;
-    }
-
-    if (save.totalBallsDropped !== undefined) {
-        totalBallsDropped = save.totalBallsDropped;
-    }
-
-    if (save.addBallPurchases !== undefined) {
-        addBallPurchases = save.addBallPurchases;
-    }
-
-    if (save.slotUpgradePurchases !== undefined) {
-        slotUpgradePurchases = save.slotUpgradePurchases;
-    }
-
-    if (save.unlockedAchievements !== undefined) {
-        unlockedAchievements = save.unlockedAchievements;
-        for (let id of unlockedAchievements) {
-            let ach = achievements.find(a => a.id === id);
-            if (ach) {
-                ach.unlocked = true;
-            }
-        }
-    }
-
-    populateAchievements();
-
-    if (balls.length === 0) {
-        balls.push(new Ball(canvas.width / 2, 50, ballRadius));
-    }
-
-    if (totalScore >= 100000) {
-        prestigeBtn.style.display = "block";
-    }
-
-
-
-    // ----- MAIN LOOP -----
-    function loop() {
-        const currentTime = performance.now();
-        const deltaTime = (currentTime - lastTime) / 1000;
-        lastTime = currentTime;
-        delta = deltaTime * 36; // adjust factor to maintain speed
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        drawPegs();
-        drawWalls();
-        drawSlots();
-
-        for (let b of balls) {
-            b.update();
-            b.draw();
-        }
-
-        requestAnimationFrame(loop);
-    }
-
-    loop();
-
-
 
     // ----- SAVE POPUP -----
     const savePopup = document.getElementById("savePopup");
@@ -580,6 +502,202 @@ window.onload = () => {
 
     savePopupClose.addEventListener("click", hideSavePopup);
 
+    // ----- ACHIEVEMENTS -----
+    function checkAchievements() {
+        for (let ach of achievements) {
+            if (!ach.unlocked && ach.condition({
+                totalScore,
+                totalBallsDropped,
+                prestigeCount,
+                scoreMultiplier,
+                totalUpgrades
+            })) {
+                ach.unlocked = true;
+                unlockedAchievements.push(ach.id);
+                showSavePopup(`Achievement Unlocked: ${ach.name}!`);
+                populateAchievements();
+                populateStats();
+            }
+        }
+    }
+
+    function populateStats() {
+        const list = document.getElementById("statsList");
+        list.innerHTML = "";
+        const stats = [
+            { name: "Total Balls Dropped", value: totalBallsDropped },
+            { name: "Times Prestiged", value: prestigeCount },
+            { name: "Lifetime Upgrades", value: totalUpgrades },
+            { name: "Lifetime Score", value: formatNumber(lifetimeScore) },
+            { name: "Total Critical Hits", value: totalCriticalHits },
+            { name: "Achievements Unlocked", value: unlockedAchievements.length + " / " + achievements.length }
+        ];
+        for (let stat of stats) {
+            const div = document.createElement("div");
+            div.className = "stat";
+            div.innerHTML = `
+                <span>${stat.name}:</span>
+                <span>${stat.value}</span>
+            `;
+            list.appendChild(div);
+        }
+    }
+
+    function populateAchievements() {
+        const list = document.getElementById("achievementsList");
+        list.innerHTML = "";
+        for (let ach of achievements) {
+            const div = document.createElement("div");
+            div.className = "achievement" + (ach.unlocked ? " unlocked" : "");
+            div.innerHTML = `
+                <h3>${ach.name}</h3>
+                <p>${ach.description}</p>
+                <p class="hint"><i>${ach.hint}</i></p>
+                ${ach.unlocked ? '<span class="checkmark">✓</span>' : ''}
+            `;
+            list.appendChild(div);
+        }
+    }
+
+    // ----- SAVE LOAD -----
+    const save = JSON.parse(localStorage.getItem("plinkoSave") || "{}");
+
+    if (save.score !== undefined) {
+        totalScore = save.score;
+        scoreEl.innerText = "Score: " + formatNumber(totalScore);
+    }
+
+    if (save.lifetimeScore !== undefined) {
+        lifetimeScore = save.lifetimeScore;
+    } else {
+        // Backward compatibility: set lifetimeScore to current totalScore
+        lifetimeScore = totalScore;
+    }
+
+    if (save.multiplier !== undefined) {
+        scoreMultiplier = save.multiplier;
+        multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
+    }
+
+
+    if (save.addBallCost !== undefined) {
+        addBallCost = save.addBallCost;
+        addBallCostEl.innerText = addBallCost;
+    }
+
+    if (save.slotUpgradeCost !== undefined) {
+        slotUpgradeCost = save.slotUpgradeCost;
+        slotUpgradeCostEl.innerText = slotUpgradeCost;
+    }
+
+    if (save.balls !== undefined) {
+        balls.length = 0;
+
+        for (let i = 0; i < save.balls; i++) {
+            balls.push(new Ball(canvas.width / 2, 50, ballRadius));
+        }
+    }
+
+    if (save.prestigeCount !== undefined) {
+        prestigeCount = save.prestigeCount;
+    }
+
+    if (prestigeCount > 0) {
+        document.querySelector('.tab[data-tab="prestige"]').classList.remove("hide");
+    } else {
+        document.querySelector('.tab[data-tab="prestige"]').classList.add("hide");
+    }
+
+    if (save.totalBallsDropped !== undefined) {
+        totalBallsDropped = save.totalBallsDropped;
+    }
+
+    if (save.totalUpgrades !== undefined) {
+        totalUpgrades = save.totalUpgrades;
+    } else if (save.addBallPurchases !== undefined || save.slotUpgradePurchases !== undefined) {
+        // Backward compatibility
+        totalUpgrades = (save.addBallPurchases || 0) + (save.slotUpgradePurchases || 0);
+    }
+
+    if (save.slotUpgradePurchases !== undefined) {
+        slotUpgradePurchases = save.slotUpgradePurchases;
+    }
+
+    if (save.critUpgradePurchases !== undefined) {
+        critUpgradePurchases = save.critUpgradePurchases;
+        critChanceEl.innerText = `Crit Chance Bonus: ${critUpgradePurchases * 5}%`;
+    }
+
+    if (save.critUpgradeCost !== undefined) {
+        critUpgradeCost = save.critUpgradeCost;
+        critUpgradeCostEl.innerText = critUpgradeCost;
+    }
+
+    // Apply slot upgrades to restore points
+    for (let i = 0; i < slotUpgradePurchases; i++) {
+        for (let s of slots) {
+            s.points *= 2;
+        }
+    }
+
+    if (save.unlockedAchievements !== undefined) {
+        unlockedAchievements = save.unlockedAchievements;
+        for (let id of unlockedAchievements) {
+            let ach = achievements.find(a => a.id === id);
+            if (ach) {
+                ach.unlocked = true;
+            }
+        }
+
+        critUpgradeCostEl.innerText = critUpgradeCost;
+    }
+
+    if (save.totalCriticalHits !== undefined) {
+        totalCriticalHits = save.totalCriticalHits;
+    }
+
+    populateAchievements();
+    populateStats();
+
+    checkAchievements();
+
+    if (balls.length === 0) {
+        balls.push(new Ball(canvas.width / 2, 50, ballRadius));
+    }
+
+    if (totalScore >= 100000) {
+        prestigeBtn.style.display = "block";
+    }
+
+
+
+    // ----- MAIN LOOP -----
+    function loop() {
+        const currentTime = performance.now();
+        const deltaTime = (currentTime - lastTime) / 1000;
+        lastTime = currentTime;
+        delta = deltaTime * 36; // adjust factor to maintain speed
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        drawPegs();
+        drawWalls();
+        drawSlots();
+
+        for (let b of balls) {
+            b.update();
+            b.draw();
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+
+
+
+    // ----- SAVE LOAD -----
+
     const manualSaveBtn = document.getElementById("manualSaveBtn");
     manualSaveBtn.addEventListener("click", () => {
         try {
@@ -587,15 +705,19 @@ window.onload = () => {
                 "plinkoSave",
                 JSON.stringify({
                     score: totalScore,
+                    lifetimeScore: lifetimeScore,
                     multiplier: scoreMultiplier,
                     addBallCost: addBallCost,
                     slotUpgradeCost: slotUpgradeCost,
                     balls: balls.length,
                     prestigeCount: prestigeCount,
                     totalBallsDropped: totalBallsDropped,
-                    addBallPurchases: addBallPurchases,
+                    totalUpgrades: totalUpgrades,
                     slotUpgradePurchases: slotUpgradePurchases,
-                    unlockedAchievements: unlockedAchievements
+                    unlockedAchievements: unlockedAchievements,
+                    totalCriticalHits: totalCriticalHits,
+                    critUpgradePurchases: critUpgradePurchases,
+                    critUpgradeCost: critUpgradeCost
                 })
             );
 
@@ -617,7 +739,8 @@ window.onload = () => {
         localStorage.removeItem("plinkoSave");
 
         totalScore = 0;
-        scoreEl.innerText = "Score: " + totalScore;
+        lifetimeScore = 0;
+        scoreEl.innerText = "Score: " + formatNumber(totalScore);
 
         scoreMultiplier = 1;
         multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
@@ -639,19 +762,27 @@ window.onload = () => {
         prestigeCount = 0;
 
         totalBallsDropped = 0;
-        addBallPurchases = 0;
+        totalUpgrades = 0;
         slotUpgradePurchases = 0;
         unlockedAchievements = [];
+        totalCriticalHits = 0;
+        critUpgradePurchases = 0;
+        critUpgradeCost = 0.5;
+        critChanceEl.innerText = `Crit Chance Bonus: 0%`;
+        checkAchievements();
 
         for (let ach of achievements) {
             ach.unlocked = false;
         }
 
         populateAchievements();
+        populateStats();
 
         confirmPopup.style.display = "none";
 
         showSavePopup("Save cleared");
+
+        location.reload();
     });
 
     confirmNo.addEventListener("click", () => {
@@ -664,30 +795,33 @@ window.onload = () => {
     const doExportBtn = document.getElementById("doExportBtn");
     const doImportBtn = document.getElementById("doImportBtn");
     const closeExportImport = document.getElementById("closeExportImport");
-    const exportSaveBtn = document.getElementById("exportSaveBtn");
-    const importSaveBtn = document.getElementById("importSaveBtn");
+    const exportImportSaveBtn = document.getElementById("exportImportSaveBtn");
 
-    exportSaveBtn.addEventListener("click", () => {
-        const saveData = {
-            score: totalScore,
-            multiplier: scoreMultiplier,
-            addBallCost: addBallCost,
-            slotUpgradeCost: slotUpgradeCost,
-            balls: balls.length,
-            prestigeCount: prestigeCount
-        };
-        const json = JSON.stringify(saveData);
-        const base64 = btoa(json);
-        saveDataTextarea.value = base64;
-        exportImportPopup.style.display = "flex";
-    });
-
-    importSaveBtn.addEventListener("click", () => {
+    exportImportSaveBtn.addEventListener("click", () => {
         saveDataTextarea.value = "";
         exportImportPopup.style.display = "flex";
     });
 
     doExportBtn.addEventListener("click", () => {
+        const saveData = {
+            score: totalScore,
+            lifetimeScore: lifetimeScore,
+            multiplier: scoreMultiplier,
+            addBallCost: addBallCost,
+            slotUpgradeCost: slotUpgradeCost,
+            balls: balls.length,
+            prestigeCount: prestigeCount,
+            totalBallsDropped: totalBallsDropped,
+            totalUpgrades: totalUpgrades,
+            slotUpgradePurchases: slotUpgradePurchases,
+            unlockedAchievements: unlockedAchievements,
+            totalCriticalHits: totalCriticalHits,
+            critUpgradePurchases: critUpgradePurchases,
+            critUpgradeCost: critUpgradeCost
+        };
+        const json = JSON.stringify(saveData);
+        const base64 = btoa(json);
+        saveDataTextarea.value = base64;
         navigator.clipboard.writeText(saveDataTextarea.value).then(() => {
             showSavePopup("Save data copied to clipboard");
         }).catch(() => {
@@ -706,7 +840,8 @@ window.onload = () => {
             const saveData = JSON.parse(json);
 
             totalScore = saveData.score || 0;
-            scoreEl.innerText = "Score: " + totalScore;
+            lifetimeScore = saveData.lifetimeScore || totalScore;
+            scoreEl.innerText = "Score: " + formatNumber(totalScore);
 
             scoreMultiplier = saveData.multiplier || 1;
             multiplierEl.innerText = `Multiplier: x${scoreMultiplier.toFixed(1)}`;
@@ -724,9 +859,20 @@ window.onload = () => {
 
             prestigeCount = saveData.prestigeCount || 0;
             totalBallsDropped = saveData.totalBallsDropped || 0;
-            addBallPurchases = saveData.addBallPurchases || 0;
+            totalUpgrades = saveData.totalUpgrades || (saveData.addBallPurchases || 0) + (saveData.slotUpgradePurchases || 0);
             slotUpgradePurchases = saveData.slotUpgradePurchases || 0;
             unlockedAchievements = saveData.unlockedAchievements || [];
+            totalCriticalHits = saveData.totalCriticalHits || 0;
+            critUpgradePurchases = saveData.critUpgradePurchases || 0;
+            critChanceEl.innerText = `Crit Chance Bonus: ${critUpgradePurchases * 5}%`;
+            critUpgradeCost = saveData.critUpgradeCost || 0.5;
+
+            // Apply slot upgrades to restore points
+            for (let i = 0; i < slotUpgradePurchases; i++) {
+                for (let s of slots) {
+                    s.points *= 2;
+                }
+            }
 
             for (let id of unlockedAchievements) {
                 let ach = achievements.find(a => a.id === id);
@@ -736,6 +882,9 @@ window.onload = () => {
             }
 
             populateAchievements();
+            populateStats();
+
+            checkAchievements();
 
             if (prestigeCount > 0) {
                 document.querySelector('.tab[data-tab="prestige"]').classList.remove("hide");
@@ -773,15 +922,19 @@ window.onload = () => {
                 "plinkoSave",
                 JSON.stringify({
                     score: totalScore,
+                    lifetimeScore: lifetimeScore,
                     multiplier: scoreMultiplier,
                     addBallCost: addBallCost,
                     slotUpgradeCost: slotUpgradeCost,
                     balls: balls.length,
                     prestigeCount: prestigeCount,
                     totalBallsDropped: totalBallsDropped,
-                    addBallPurchases: addBallPurchases,
+                    totalUpgrades: totalUpgrades,
                     slotUpgradePurchases: slotUpgradePurchases,
-                    unlockedAchievements: unlockedAchievements
+                    unlockedAchievements: unlockedAchievements,
+                    totalCriticalHits: totalCriticalHits,
+                    critUpgradePurchases: critUpgradePurchases,
+                    critUpgradeCost: critUpgradeCost
                 })
             );
 
