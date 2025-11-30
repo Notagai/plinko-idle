@@ -29,7 +29,9 @@ window.onload = () => {
     let prestigeShardMultiplier = 1;
     let prestigeUpgradesUnlocked = false;
     let transcendUpgradesUnlocked = false;
+    let automationUnlocked = false;
     let hasReached100k = false;
+    let fancyEffectsEnabled = true; // default enabled
     let autosaveInterval = 60000; // default 60 seconds
     let autosaveTimer = null;
 
@@ -59,7 +61,13 @@ window.onload = () => {
                         transcendCount: transcendCount,
                         transcendCost: transcendCost,
                         prestigeShardMultiplier: prestigeShardMultiplier,
-                        hasReached100k: hasReached100k
+                        hasReached100k: hasReached100k,
+                        fancyEffectsEnabled: fancyEffectsEnabled,
+                        missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
+                            currentMissionIndex: missionSystem.currentMissionIndex,
+                            completedMissions: Array.from(missionSystem.completedMissions),
+                            allMissionsComplete: missionSystem.allMissionsComplete
+                        } : null
                     })
                 );
 
@@ -121,7 +129,7 @@ window.onload = () => {
             
             if (shouldShow) {
                 prestigeTab.classList.remove("hide");
-                if (prestigeCount === 0 && totalScore > 100000) {
+                if (lifetimePrestiges === 0 && totalScore > 100000) {
                     prestigeTab.classList.add("highlight");
                 }
             } else {
@@ -154,17 +162,33 @@ window.onload = () => {
     function getAffordableShards(multiplier) {
         let shardCount = 0;
         let cost = 0;
-        
+
         while (cost <= multiplier) {
             shardCount++;
             cost = getTranscendCostForShards(shardCount);
-            
+
             // Prevent infinite loop
             if (shardCount > 100) break;
         }
-        
+
         return Math.max(0, shardCount - 1); // Subtract 1 because the last iteration exceeded
     }
+
+    // Function to apply gradient colors to "Transcendence" and "Prestige" words
+    function applyGradientColors(text) {
+        if (!text) return text;
+
+        // Replace "Transcendence(s)" with gradient span (case insensitive)
+        text = text.replace(/Transcendence(s)?/gi, '<span class="transcend-gradient">$&</span>');
+
+        // Replace "Prestige(s)" with gradient span (case insensitive)
+        text = text.replace(/Prestige(s)?/gi, '<span class="prestige-gradient">$&</span>');
+
+        return text;
+    }
+
+    // Make function globally available for missions.js
+    window.applyGradientColors = applyGradientColors;
 
     // Tab switching
     const tabs = document.querySelectorAll('.tab');
@@ -528,6 +552,19 @@ window.onload = () => {
                 updateButtonStates();
                 updateProgressBars();
 
+                // Update mission system
+                if (typeof missionSystem !== 'undefined' && missionSystem) {
+                    missionSystem.update({
+                        totalScore,
+                        lifetimeScore,
+                        balls,
+                        totalUpgrades,
+                        totalCriticalHits,
+                        updateMultiplierDisplays: updateMultiplierDisplays,
+                        scoreMultiplier
+                    });
+                }
+
 
                 if (totalScore >= 100000) {
                     hasReached100k = true;
@@ -610,6 +647,7 @@ window.onload = () => {
             populateStats();
             checkAchievements();
             updateButtonStates();
+
         }
     });
 
@@ -624,6 +662,24 @@ window.onload = () => {
 
             updateButtonStates();
             updateProgressBars();
+        }
+    });
+
+    const unlockAutomationBtn = document.getElementById("unlockAutomationBtn");
+    unlockAutomationBtn.addEventListener("click", () => {
+        if (transcensionShards >= 10) {
+            transcensionShards -= 10;
+            transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
+
+            automationUnlocked = true;
+            const automationSection = document.getElementById("automationSection");
+            if (automationSection) {
+                automationSection.style.display = "block";
+            }
+            unlockAutomationBtn.style.display = "none";
+
+            updateMultiplierDisplays();
+            updateButtonStates();
         }
     });
 
@@ -758,11 +814,25 @@ window.onload = () => {
     const confirmNo = document.getElementById("confirmNo");
 
     const autosaveIntervalEl = document.getElementById("autosaveInterval");
+    const fancyEffectsToggleEl = document.getElementById("fancyEffectsToggle");
 
     autosaveIntervalEl.addEventListener("change", () => {
         autosaveInterval = parseInt(autosaveIntervalEl.value);
         startAutosave();
     });
+
+    fancyEffectsToggleEl.addEventListener("change", () => {
+        fancyEffectsEnabled = fancyEffectsToggleEl.checked;
+        if (window.backgroundEffects) {
+            window.backgroundEffects.setEnabled(fancyEffectsEnabled);
+        }
+    });
+
+    // Set initial state
+    fancyEffectsToggleEl.checked = fancyEffectsEnabled;
+    if (window.backgroundEffects) {
+        window.backgroundEffects.setEnabled(fancyEffectsEnabled);
+    }
 
     let savePopupTimeout = null;
 
@@ -862,8 +932,8 @@ window.onload = () => {
             div.id = `achievement-${ach.id}`;
             div.className = "achievement" + (ach.unlocked ? " unlocked" : "");
             div.innerHTML = `
-                <h3>${ach.name}</h3>
-                <p>${ach.unlocked ? ach.description : "???"}</p>
+                <h3>${applyGradientColors(ach.name)}</h3>
+                <p>${ach.unlocked ? applyGradientColors(ach.description) : "???"}</p>
                 <p class="hint"><i>${ach.hint}</i></p>
                 ${ach.unlocked ? '<span class="checkmark">✓</span>' : ''}
             `;
@@ -903,6 +973,13 @@ window.onload = () => {
             spendShardBtn.classList.add('disabled');
         }
 
+        // Check for unlock automation button
+        if (transcensionShards >= 10 && !automationUnlocked) {
+            unlockAutomationBtn.classList.remove('disabled');
+        } else {
+            unlockAutomationBtn.classList.add('disabled');
+        }
+
         // Update prestige info
         const prestigeInfo = document.getElementById("prestigeInfo");
         let prestigesToGain = 0;
@@ -927,12 +1004,24 @@ window.onload = () => {
         }
     }
 
+    function updateTranscendSectionVisibility() {
+        const transcendSection = document.getElementById('transcendSection');
+        if (transcendSection) {
+            // Show transcend section when prestige multiplier reaches 5x or if player has transcended before
+            if (scoreMultiplier >= 5 || transcendCount > 0) {
+                transcendSection.style.display = 'block';
+            } else {
+                transcendSection.style.display = 'none';
+            }
+        }
+    }
+
     function updateMultiplierDisplays() {
         // Calculate transcend multiplier based on both spent AND unspent shards
         // Unspent shards: transcensionShards
         // Spent shards: represented by prestigeShardMultiplier (which is 2^spent_shards)
         const transcendMultiplier = Math.pow(2, transcensionShards) * prestigeShardMultiplier;
-        
+
         // Update displays with conditional visibility
         if (prestigeCount >= 1 || transcendCount >= 1) {
             prestigeMultiplierEl.innerText = `Prestige Multiplier: x${scoreMultiplier.toFixed(1)}`;
@@ -940,13 +1029,16 @@ window.onload = () => {
         } else {
             prestigeMultiplierEl.style.display = 'none';
         }
-        
+
         if (transcendCount >= 1) {
             transcendMultiplierEl.innerText = `Transcend Multiplier: x${transcendMultiplier.toFixed(1)}`;
             transcendMultiplierEl.style.display = 'block';
         } else {
             transcendMultiplierEl.style.display = 'none';
         }
+
+        // Update transcend section visibility
+        updateTranscendSectionVisibility();
     }
 
     function updateProgressBars() {
@@ -954,24 +1046,24 @@ window.onload = () => {
         let prestigesToGain = 0;
         let remainingScore = totalScore;
         let threshold = 100000;
-        
+
         // Find out how many prestiges the player can afford and what the current threshold is
         while (remainingScore >= threshold) {
             prestigesToGain++;
             remainingScore -= threshold;
             threshold *= 2;
         }
-        
+
         // The current threshold is what the player is working towards
         const currentThreshold = threshold;
         const progressToCurrentThreshold = (totalScore - (totalScore - remainingScore)) / currentThreshold;
         const prestigeProgress = Math.min(progressToCurrentThreshold, 1) * 100;
-        
+
         prestigeProgressFill.style.width = prestigeProgress + "%";
 
         // Transcend progress - show progress towards next shard threshold
         const affordableShards = getAffordableShards(scoreMultiplier);
-        
+
         let transcendProgress;
         if (affordableShards === 0) {
             // Can't afford any shards - show progress from 0 to first shard cost
@@ -986,6 +1078,10 @@ window.onload = () => {
         }
         transcendProgressFill.style.width = transcendProgress + "%";
     }
+
+    // ----- MISSION SYSTEM -----
+    // Initialize mission system
+    const missionSystem = new MissionSystem();
 
     // ----- SAVE LOAD -----
     const save = JSON.parse(localStorage.getItem("plinkoSave") || "{}");
@@ -1119,6 +1215,10 @@ window.onload = () => {
         transcendUpgradesUnlocked = save.transcendUpgradesUnlocked;
     }
 
+    if (save.automationUnlocked !== undefined) {
+        automationUnlocked = save.automationUnlocked;
+    }
+
     // Update transcend upgrades visibility after loading save data
     updateTranscendUpgradesVisibility();
 
@@ -1126,11 +1226,29 @@ window.onload = () => {
         hasReached100k = save.hasReached100k;
     }
 
+    if (save.fancyEffectsEnabled !== undefined) {
+        fancyEffectsEnabled = save.fancyEffectsEnabled;
+        fancyEffectsToggleEl.checked = fancyEffectsEnabled;
+        if (window.backgroundEffects) {
+            window.backgroundEffects.setEnabled(fancyEffectsEnabled);
+        }
+    }
+
+    // Load mission progress
+    if (save.missionProgress !== undefined && typeof missionSystem !== 'undefined' && missionSystem) {
+        missionSystem.currentMissionIndex = save.missionProgress.currentMissionIndex || 0;
+        missionSystem.completedMissions = new Set(save.missionProgress.completedMissions || []);
+        missionSystem.allMissionsComplete = save.missionProgress.allMissionsComplete || false;
+        missionSystem.updateMissionDisplay();
+    }
+
     // Set unlocked flags
     if (lifetimePrestiges > 0) {
         prestigeUpgradesUnlocked = true;
     }
-    // Don't automatically unlock transcend upgrades on load - they should unlock only after an actual transcend
+    if (transcendCount >= 1) {
+        transcendUpgradesUnlocked = true;
+    }
 
     // Update visibility after setting flags
     updateTranscendUpgradesVisibility();
@@ -1138,6 +1256,18 @@ window.onload = () => {
     // Set displays
     prestigeUpgrades.style.display = prestigeUpgradesUnlocked ? "block" : "none";
     // transcendUpgrades visibility handled by updateTranscendUpgradesVisibility()
+
+    // Show automation section if unlocked
+    if (automationUnlocked) {
+        const automationSection = document.getElementById("automationSection");
+        if (automationSection) {
+            automationSection.style.display = "block";
+        }
+        const unlockAutomationBtn = document.getElementById("unlockAutomationBtn");
+        if (unlockAutomationBtn) {
+            unlockAutomationBtn.style.display = "none";
+        }
+    }
 
     prestigeBtn.style.display = "block";
     updatePrestigeTabVisibility();
@@ -1156,6 +1286,7 @@ window.onload = () => {
     updatePrestigeTabVisibility();
     updateMultiplierDisplays();
     updateTranscendUpgradesVisibility();
+    updateTranscendSectionVisibility();
 
     // Backup call to ensure prestige tab visibility is correct after DOM is ready
     setTimeout(() => {
@@ -1187,6 +1318,18 @@ window.onload = () => {
         for (let b of balls) {
             b.update();
             b.draw();
+        }
+
+        // Update mission system
+        if (typeof missionSystem !== 'undefined' && missionSystem) {
+            missionSystem.update({
+                totalScore,
+                lifetimeScore,
+                balls,
+                totalUpgrades,
+                totalCriticalHits,
+                scoreMultiplier
+            });
         }
 
         requestAnimationFrame(loop);
@@ -1225,8 +1368,15 @@ window.onload = () => {
                     transcensionShards: transcensionShards,
                     prestigeUpgradesUnlocked: prestigeUpgradesUnlocked,
                     transcendUpgradesUnlocked: transcendUpgradesUnlocked,
+                    automationUnlocked: automationUnlocked,
                     prestigeShardMultiplier: prestigeShardMultiplier,
-                    hasReached100k: hasReached100k
+                    hasReached100k: hasReached100k,
+                    fancyEffectsEnabled: fancyEffectsEnabled,
+                    missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
+                        currentMissionIndex: missionSystem.currentMissionIndex,
+                        completedMissions: Array.from(missionSystem.completedMissions),
+                        allMissionsComplete: missionSystem.allMissionsComplete
+                    } : null
                 })
             );
 
@@ -1286,10 +1436,25 @@ window.onload = () => {
         transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
         prestigeUpgradesUnlocked = false;
         transcendUpgradesUnlocked = false;
+        automationUnlocked = false;
         hasReached100k = false;
+        fancyEffectsEnabled = true;
+        fancyEffectsToggleEl.checked = true;
+        if (window.backgroundEffects) {
+            window.backgroundEffects.setEnabled(true);
+        }
         prestigeShardMultiplier = 1;
         autosaveInterval = 60000;
         autosaveIntervalEl.value = autosaveInterval;
+
+        // Reset mission progress
+        if (typeof missionSystem !== 'undefined' && missionSystem) {
+            missionSystem.currentMissionIndex = 0;
+            missionSystem.completedMissions = new Set();
+            missionSystem.allMissionsComplete = false;
+            missionSystem.updateMissionDisplay();
+        }
+
         checkAchievements();
 
         for (let ach of achievements) {
@@ -1346,8 +1511,15 @@ window.onload = () => {
             transcensionShards: transcensionShards,
             prestigeUpgradesUnlocked: prestigeUpgradesUnlocked,
             transcendUpgradesUnlocked: transcendUpgradesUnlocked,
+            automationUnlocked: automationUnlocked,
             prestigeShardMultiplier: prestigeShardMultiplier,
-            hasReached100k: hasReached100k
+            hasReached100k: hasReached100k,
+            fancyEffectsEnabled: fancyEffectsEnabled,
+            missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
+                currentMissionIndex: missionSystem.currentMissionIndex,
+                completedMissions: Array.from(missionSystem.completedMissions),
+                allMissionsComplete: missionSystem.allMissionsComplete
+            } : null
         };
         const json = JSON.stringify(saveData);
         const base64 = btoa(json);
@@ -1405,14 +1577,30 @@ window.onload = () => {
             if (transcensionShardsEl) transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
             prestigeUpgradesUnlocked = saveData.prestigeUpgradesUnlocked || false;
             transcendUpgradesUnlocked = saveData.transcendUpgradesUnlocked || false;
+            automationUnlocked = saveData.automationUnlocked || false;
             prestigeShardMultiplier = saveData.prestigeShardMultiplier || 1;
             hasReached100k = saveData.hasReached100k || false;
+            fancyEffectsEnabled = saveData.fancyEffectsEnabled !== undefined ? saveData.fancyEffectsEnabled : true;
+            fancyEffectsToggleEl.checked = fancyEffectsEnabled;
+            if (window.backgroundEffects) {
+                window.backgroundEffects.setEnabled(fancyEffectsEnabled);
+            }
+
+            // Load mission progress from import
+            if (saveData.missionProgress !== undefined && typeof missionSystem !== 'undefined' && missionSystem) {
+                missionSystem.currentMissionIndex = saveData.missionProgress.currentMissionIndex || 0;
+                missionSystem.completedMissions = new Set(saveData.missionProgress.completedMissions || []);
+                missionSystem.allMissionsComplete = saveData.missionProgress.allMissionsComplete || false;
+                missionSystem.updateMissionDisplay();
+            }
 
             // Set unlocked flags
             if (lifetimePrestiges > 0) {
                 prestigeUpgradesUnlocked = true;
             }
-            // Don't automatically unlock transcend upgrades on import - they should unlock only after an actual transcend
+            if (transcendCount >= 1) {
+                transcendUpgradesUnlocked = true;
+            }
 
             // Update visibility after import
             updateTranscendUpgradesVisibility();
@@ -1420,6 +1608,18 @@ window.onload = () => {
             // Set displays
             prestigeUpgrades.style.display = prestigeUpgradesUnlocked ? "block" : "none";
             // transcendUpgrades visibility handled by updateTranscendUpgradesVisibility()
+
+            // Show automation section if unlocked
+            if (automationUnlocked) {
+                const automationSection = document.getElementById("automationSection");
+                if (automationSection) {
+                    automationSection.style.display = "block";
+                }
+                const unlockAutomationBtn = document.getElementById("unlockAutomationBtn");
+                if (unlockAutomationBtn) {
+                    unlockAutomationBtn.style.display = "none";
+                }
+            }
 
             if (prestigeCount > 0) {
                 prestigeBtn.classList.add('disabled');
@@ -1452,6 +1652,7 @@ window.onload = () => {
             checkAchievements();
             updateProgressBars();
             updatePrestigeTabVisibility();
+            updateTranscendSectionVisibility();
 
             // Calculate next prestige threshold
             let nextThreshold = 0;

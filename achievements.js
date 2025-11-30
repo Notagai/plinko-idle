@@ -139,6 +139,14 @@ const achievements = [
         unlocked: false
     },
     {
+        id: "prestige_5",
+        name: "5 Prestiges",
+        description: "Prestige five times.",
+        hint: "\"Quite a few prestiges...\"",
+        condition: (state) => state.prestigeCount >= 5,
+        unlocked: false
+    },
+    {
         id: "prestige_10",
         name: "Ten Prestiges",
         description: "Prestige ten times",

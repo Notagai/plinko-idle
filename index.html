@@ -68,6 +68,17 @@
                             Costs: 1 transcension shard.
                         </span>
                     </button>
+                    <button id="unlockAutomationBtn">
+                        Unlock Automation
+                        <span class="tooltip">
+                            Unlocks the Automation section.
+                            <hr>
+                            Costs: 10 transcension shards.
+                        </span>
+                    </button>
+                </div>
+                <div id="automationSection" style="display:none">
+                    <h2 class="automationTitle">Automation</h2>
                 </div>
             </div>
             <div id="prestige-tab" class="tab-pane">
@@ -80,13 +91,15 @@
                     <div id="prestigeProgressFill"></div>
                     <span class="progressText">To next prestige threshold</span>
                 </div>
-                <h2 class="trUpTitle">Transcend</h2>
-                <button id="actualTranscendBtn">Transcend</button>
-                <p>Transcend resets everything including prestiges and gives you 1 transcension shard. Each transcension shard provides a permanent 2x compounding multiplier to all scores.</p>
-                <p id="transcendInfo"></p>
-                <div id="transcendProgressBar">
-                    <div id="transcendProgressFill"></div>
-                    <span class="progressText">To next transcend threshold</span>
+                <div id="transcendSection" style="display: none;">
+                    <h2 class="trUpTitle">Transcend</h2>
+                    <button id="actualTranscendBtn">Transcend</button>
+                    <p>Transcend resets everything including prestiges and gives you 1 transcension shard. Each transcension shard provides a permanent 2x compounding multiplier to all scores.</p>
+                    <p id="transcendInfo"></p>
+                    <div id="transcendProgressBar">
+                        <div id="transcendProgressFill"></div>
+                        <span class="progressText">To next transcend threshold</span>
+                    </div>
                 </div>
             </div>
             <div id="stats-tab" class="tab-pane">
@@ -106,6 +119,10 @@
                         <option value="120000">120 seconds</option>
                     </select>
                 </div>
+                <div>
+                    <label for="fancyEffectsToggle">Fancy Effects:</label>
+                    <input type="checkbox" id="fancyEffectsToggle" checked>
+                </div>
                 <button id="manualSaveBtn">Save Game</button>
                 <button id="clearSaveBtn">Clear Save</button>
                 <button id="exportImportSaveBtn">Export/Import Save</button>
@@ -114,6 +131,8 @@
     </div>
 
     <script src="achievements.js"></script>
+    <script src="missions.js"></script>
+    <script src="effects.js"></script>
     <script src="main.js"></script>
 
     <div id="savePopup" role="status" aria-live="polite">
