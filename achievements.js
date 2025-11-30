@@ -20,8 +20,8 @@ const achievements = [
     },
     {
         id: "score_100k",
-        name: "Fill The Bar",
-        description: "Fill the bar at the bottom! Hint: 100k score",
+        name: "A Tenth of a Million",
+        description: "Score 100,000 points in one prestige.",
         hint: "\"While it seems like a lot, the big numbers only get bigger from here.\"",
         condition: (state) => state.totalScore >= 100000,
         unlocked: false
@@ -35,13 +35,13 @@ const achievements = [
         unlocked: false
     },
     { //score-life
-        id: "score_1m",
+        id: "score_1m_lifetime",
         name: "Sad Millionaire",
         description: "Score a million points... just not in one prestige. (Lifetime)",
         hint: "\"How many times are you gonna keep resetting?\"",
         condition: (state) => state.lifetimeScore >= 1000000,
         unlocked: false
-    }, 
+    },
     {
         id: "score_10m",
         name: "Ten Million!",
@@ -83,11 +83,11 @@ const achievements = [
         unlocked: false
     },
     { //balls-life
-        id: "balls_1000",
+        id: "balls_1000_lifetime",
         name: "A Sad Thousand Balls!",
         description: "Drop a thousand balls in your lifetime!",
         hint: "\"Nice... how long did this take?\"",
-        condition: (state) => state.lifetimeBallsDropped >= 1000,
+        condition: (state) => state.totalBallsDropped >= 1000,
         unlocked: false
     },
     {
@@ -95,7 +95,7 @@ const achievements = [
         name: "Ten Thousand Balls!",
         description: "Drop ten thousand balls in your lifetime!",
         hint: "\"Time doesn't matter to you anymore, does it?\"",
-        condition: (state) => state.lifetimeBallsDropped >= 10000,
+        condition: (state) => state.totalBallsDropped >= 10000,
         unlocked: false
     },
     { //upg
@@ -147,11 +147,75 @@ const achievements = [
         unlocked: false
     },
     {
+        id: "prestige_25",
+        name: "Twenty-Five Prestiges",
+        description: "Prestige twenty-five times",
+        hint: "\"This game is a game. And games are fun, it seems.\"",
+        condition: (state) => state.prestigeCount >= 25,
+        unlocked: false
+    },
+    {
+        id: "prestige_50",
+        name: "Fifty Prestiges",
+        description: "Prestige fifty times",
+        hint: "\"Prestiging is second nature to you now, isn't it?\"",
+        condition: (state) => state.prestigeCount >= 50,
+        unlocked: false
+    },
+    {
         id: "prestige_100",
         name: "A Hundred Prestiges",
         description: "Prestige a hundred times",
-        hint: "\"You're... gambling through different dimensions. w h a t\"",
+        hint: "\"\"Gambling on and on, never seeming to stop.\"-The Art of War, Sun Tzu\"",
         condition: (state) => state.prestigeCount >= 100,
+        unlocked: false
+    },
+    { //transcend
+        id: "transcend_1",
+        name: "First Transcendence",
+        description: "Transcend for the first time",
+        hint: "\"Beyond the veil of reality, there is you.\"",
+        condition: (state) => state.transcendCount >= 1,
+        unlocked: false
+    },
+    {
+        id: "transcend_5",
+        name: "Five Transcendences",
+        description: "Transcend five times",
+        hint: "\"Your reality is becoming abstract.\"",
+        condition: (state) => state.transcendCount >= 5,
+        unlocked: false
+    },
+    {
+        id: "transcend_10",
+        name: "Ten Transcendences",
+        description: "Transcend ten times",
+        hint: "\"Do you even remember what reality is anymore?\"",
+        condition: (state) => state.transcendCount >= 10,
+        unlocked: false
+    },
+    {
+        id: "transcend_25",
+        name: "Twenty-Five Transcendences",
+        description: "Transcend twenty-five times",
+        hint: "\"You broke physics. Not the plinko ones though, I spent way too long getting that to work.\"",
+        condition: (state) => state.transcendCount >= 25,
+        unlocked: false
+    },
+    {
+        id: "transcend_50",
+        name: "Fifty Transcendences",
+        description: "Transcend fifty times",
+        hint: "\"Do you miss your family?\"",
+        condition: (state) => state.transcendCount >= 50,
+        unlocked: false
+    },
+    {
+        id: "transcend_100",
+        name: "A Hundred Transcendences",
+        description: "Transcend a hundred times",
+        hint: "\"What is a family?\"",
+        condition: (state) => state.transcendCount >= 100,
         unlocked: false
     },
 ];

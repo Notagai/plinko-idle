@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plinko Idle</title>
+    <title>Plinko Incremental</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
@@ -13,14 +13,9 @@
 
     <div id="ui">
         <div id="score">Score: 0</div>
-        <div id="multiplier">Multiplier: x1.0</div>
-        <div id="critChance">Crit Chance Bonus: 0%</div>
-        <div id="prestigeContainer">
-            <button id="prestigeBtn" style="display:none">Prestige</button>
-            <div id="prestigeBar">
-                <div id="prestigeFill"></div>
-            </div>
-        </div>
+        <div id="prestigeMultiplier">Prestige Multiplier: x1.0</div>
+        <div id="transcendMultiplier" class="transcend-mult">Transcend Multiplier: x1.0</div>
+        <div id="critChance">Crit Chance: 5%</div>
     </div>
 
     <canvas id="game"></canvas>
@@ -28,7 +23,7 @@
     <div id="upgradeMenu" class="hide">
         <div class="tabs">
             <button class="tab active" data-tab="regular">Upgrades</button>
-            <button class="tab" data-tab="prestige">Prestige Upgrades</button>
+            <button class="tab hide" data-tab="prestige">Prestige</button>
             <button class="tab" data-tab="stats">Stats</button>
             <button class="tab" data-tab="controls">Game Controls</button>
         </div>
@@ -43,25 +38,56 @@
                         Costs: <span id="addBallCost">2000</span> points.
                     </span>
                 </button>
+                <div id="prestigeUpgrades" style="display:none">
+                    <h2 class="pUpTitle">Prestige Upgrades</h2>
+                    <button id="slotUpgradeBtn">
+                        Slot Value Boost
+                        <span class="tooltip">
+                            Doubles the points of all slots for higher scores.
+                            <hr>
+                            Costs: <span id="slotUpgradeCost">1</span> multiplier.
+                        </span>
+                    </button>
+                    <button id="critUpgradeBtn">
+                        Crit Chance Boost
+                        <span class="tooltip">
+                            Increases critical hit chance by 5%.
+                            <hr>
+                            Costs: <span id="critUpgradeCost">0.5</span> multiplier.
+                        </span>
+                    </button>
+                </div>
+                <div id="transcendUpgrades" style="display:none">
+                    <h2 class="trUpTitle">Transcend</h2>
+                    <div id="transcensionShards">Transcension Shards: 0</div>
+                    <button id="spendShardBtn">
+                        Transcended Boost
+                        <span class="tooltip">
+                            Spend a transcension shard to permanently double prestige multiplier gains.
+                            <hr>
+                            Costs: 1 transcension shard.
+                        </span>
+                    </button>
+                </div>
             </div>
             <div id="prestige-tab" class="tab-pane">
-                <h2 id="pUpTitle">Prestige Upgrades</h2>
-                <button id="slotUpgradeBtn">
-                    Double Slots
-                    <span class="tooltip">
-                        Doubles the points of all slots for higher scores.
-                        <hr>
-                        Costs: <span id="slotUpgradeCost">1</span> multiplier.
-                    </span>
-                </button>
-                <button id="critUpgradeBtn">
-                    Upgrade Critical Hit Chance
-                    <span class="tooltip">
-                        Increases critical hit chance by 5%.
-                        <hr>
-                        Costs: <span id="critUpgradeCost">0.5</span> multiplier.
-                    </span>
-                </button>
+                <h2 class="pUpTitle">Prestige</h2>
+                <button id="prestigeBtn" style="display:none">Prestige</button>
+                <p>Prestige resets your score and upgrades, but gives you a permanent multiplier boost. Or you could
+                    spend that multiplier on other upgrades that may or may not be worth it.</p>
+                <p id="prestigeInfo"></p>
+                <div id="prestigeProgressBar">
+                    <div id="prestigeProgressFill"></div>
+                    <span class="progressText">To next prestige threshold</span>
+                </div>
+                <h2 class="trUpTitle">Transcend</h2>
+                <button id="actualTranscendBtn">Transcend</button>
+                <p>Transcend resets everything including prestiges and gives you 1 transcension shard. Each transcension shard provides a permanent 2x compounding multiplier to all scores.</p>
+                <p id="transcendInfo"></p>
+                <div id="transcendProgressBar">
+                    <div id="transcendProgressFill"></div>
+                    <span class="progressText">To next transcend threshold</span>
+                </div>
             </div>
             <div id="stats-tab" class="tab-pane">
                 <h2>Stats</h2>
@@ -71,6 +97,15 @@
             </div>
             <div id="controls-tab" class="tab-pane">
                 <h2>Game Controls</h2>
+                <div>
+                    <label for="autosaveInterval">Autosave Interval:</label>
+                    <select id="autosaveInterval">
+                        <option value="15000">15 seconds</option>
+                        <option value="30000">30 seconds</option>
+                        <option value="60000" selected>60 seconds</option>
+                        <option value="120000">120 seconds</option>
+                    </select>
+                </div>
                 <button id="manualSaveBtn">Save Game</button>
                 <button id="clearSaveBtn">Clear Save</button>
                 <button id="exportImportSaveBtn">Export/Import Save</button>
@@ -96,13 +131,16 @@
 
     <div id="exportImportPopup" role="dialog">
         <h3>Export/Import Save</h3>
-        <textarea id="saveDataTextarea" placeholder="Your save data will appear here for export, or paste here for import"></textarea>
+        <textarea id="saveDataTextarea"
+            placeholder="Your save data will appear here for export, or paste here for import"></textarea>
         <div>
             <button id="doExportBtn">Export</button>
             <button id="doImportBtn">Import</button>
             <button id="closeExportImport">Close</button>
         </div>
     </div>
+
+    <div id="version">Plinko Incremental by Notagai | Pre-Alpha 0.1.4</div>
 
 </body>
 
