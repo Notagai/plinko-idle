@@ -73,12 +73,24 @@
                         <span class="tooltip">
                             Unlocks the Automation section.
                             <hr>
-                            Costs: 10 transcension shards.
+                            Requires: 10 transcension shards.
                         </span>
                     </button>
                 </div>
                 <div id="automationSection" style="display:none">
                     <h2 class="automationTitle">Automation</h2>
+                    <div class="auto-prestige-controls">
+                        <button id="autoPrestigeBtn">
+                            Auto Prestige
+                            <span class="tooltip">
+                                Automatically prestiges when reaching the set threshold.
+                                <hr>
+                                Costs: 10 transcension shards.
+                            </span>
+                        </button>
+                        <input type="number" id="autoPrestigeThreshold" min="0" placeholder="Threshold (0=disabled)" value="0" style="display:none;">
+                    </div>
+                    <p class="auto-prestige-description">Set the prestige level threshold. When your score reaches the required amount for that many prestiges, it will automatically prestige. Set to 0 to disable.</p>
                 </div>
             </div>
             <div id="prestige-tab" class="tab-pane">
@@ -163,7 +175,7 @@
         </div>
     </div>
 
-    <div id="version">Plinko Incremental by Notagai | Pre-Alpha 0.1.6</div>
+    <div id="version">Plinko Incremental by Notagai | Pre-Alpha v0.1.7</div>
 
 </body>
 

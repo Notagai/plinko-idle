@@ -18,9 +18,15 @@ const missions = [
     },
     {
         id: '10_shards',
-        description: 'Reach 10 Transcendence shards to unlock Automation. (upgrade)',
+        description: 'Reach 10 Transcendence shards to unlock Automation in Upgrades.',
         target: 'transcend_shards',
         value: 10
+    },
+    {
+        id: '100_shards',
+        description: 'Reach 100 Transcendence shards to unlock the Wilderness.',
+        target: 'transcend_shards',
+        value: 100
     }
 ];
 
@@ -199,7 +205,7 @@ class MissionSystem {
         }
         
         if (progressText) {
-            progressText.textContent = `${Math.floor(current).toLocaleString()} / ${target.toLocaleString()}`;
+            progressText.textContent = `${window.formatNumber ? window.formatNumber(Math.floor(current)) : Math.floor(current).toLocaleString()} / ${window.formatNumber ? window.formatNumber(target) : target.toLocaleString()}`;
         }
     }
 

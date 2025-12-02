@@ -32,6 +32,8 @@ window.onload = () => {
     let prestigeUpgradesUnlocked = false;
     let transcendUpgradesUnlocked = false;
     let automationUnlocked = false;
+    let autoPrestigePurchased = false;
+    let autoPrestigeThreshold = 0;
     let hasReached100k = false;
     let fancyEffectsEnabled = true; // default enabled
     let soundEffectsEnabled = true; // default enabled
@@ -183,7 +185,7 @@ window.onload = () => {
         return Math.max(0, shardCount - 1); // Subtract 1 because the last iteration exceeded
     }
 
-    // Function to apply gradient colors to "Transcendence" and "Prestige" words
+    // Function to apply gradient colors to "Transcendence", "Prestige", and "Wilderness" words
     function applyGradientColors(text) {
         if (!text) return text;
 
@@ -193,11 +195,15 @@ window.onload = () => {
         // Replace "Prestige(s)" with gradient span (case insensitive)
         text = text.replace(/Prestige(s)?/gi, '<span class="prestige-gradient">$&</span>');
 
+        // Replace "Wilderness" with gradient span (case insensitive)
+        text = text.replace(/Wilderness/gi, '<span class="wilderness-gradient">$&</span>');
+
         return text;
     }
 
     // Make function globally available for missions.js
     window.applyGradientColors = applyGradientColors;
+    window.formatNumber = formatNumber;
 
     // Tab switching
     const tabs = document.querySelectorAll('.tab');
@@ -438,7 +444,7 @@ window.onload = () => {
             ctx.fillRect(s.x, slotY + s.offsetY, s.width, 20);
 
             ctx.fillStyle = "black";
-            ctx.fillText(s.points, s.x + s.width / 2 - 10, slotY + s.offsetY + 14);
+            ctx.fillText(formatNumber(s.points), s.x + s.width / 2 - 10, slotY + s.offsetY + 14);
 
             s.offsetY *= 0.8;
         }
@@ -603,12 +609,58 @@ window.onload = () => {
                     totalCriticalHits++;
                     const critX = best.x + best.width / 2;
                     const critY = slotY;
-                    createFlyingText(critX, critY, `CRIT x${critMultiplier.toFixed(1)}`, 'red');
+                    createFlyingText(critX, critY, `CRIT x${formatNumber(critMultiplier)}`, 'red');
                 }
 
                 totalScore += scoreGained;
                 lifetimeScore += scoreGained;
                 scoreEl.innerText = "Score: " + formatNumber(totalScore);
+
+                // Auto prestige check
+                if (autoPrestigePurchased && autoPrestigeThreshold > 0) {
+                    const threshold = 100000 * (Math.pow(2, autoPrestigeThreshold) - 1);
+                    if (totalScore >= threshold) {
+                        // Trigger auto prestige
+                        let prestigesToGain = autoPrestigeThreshold;
+                        prestigeCount += prestigesToGain;
+                        lifetimePrestiges += prestigesToGain;
+                        scoreMultiplier += prestigesToGain * 0.5 * Math.pow(2, transcendCount) * prestigeShardMultiplier;
+                        updateMultiplierDisplays();
+
+                        updatePrestigeTabVisibility();
+
+                        totalScore = 0;
+                        scoreEl.innerText = "Score: " + formatNumber(totalScore);
+
+                        prestigeProgressFill.style.width = "0%";
+
+                        balls.length = 0;
+                        balls.push(new Ball(canvas.width / 2, 50, ballRadius));
+
+                        addBallCost = 2000;
+                        addBallCostEl.innerText = addBallCost;
+
+                        if (lifetimePrestiges >= 1) {
+                            prestigeUpgradesUnlocked = true;
+                            prestigeUpgrades.style.display = "block";
+                        }
+
+                        if (transcendCount >= 1) {
+                            transcendUpgradesUnlocked = true;
+                            updateTranscendUpgradesVisibility();
+                        }
+
+                        prestigeBtn.classList.add('disabled');
+
+                        playPrestigeSound();
+
+                        checkAchievements();
+                        updateButtonStates();
+                        updateProgressBars();
+
+                        startAutosave();
+                    }
+                }
 
                 totalBallsDropped++;
 
@@ -666,7 +718,7 @@ window.onload = () => {
             balls.push(new Ball(canvas.width / 2, 50, ballRadius));
 
             addBallCost = Math.floor(addBallCost * 1.6);
-            addBallCostEl.innerText = addBallCost;
+            addBallCostEl.innerText = formatNumber(addBallCost);
 
             totalUpgrades++;
 
@@ -688,7 +740,7 @@ window.onload = () => {
             scoreMultiplier -= slotUpgradeCost;
             slotUpgradeCost *= 2;
 
-            slotUpgradeCostEl.innerText = slotUpgradeCost;
+            slotUpgradeCostEl.innerText = formatNumber(slotUpgradeCost);
             updateMultiplierDisplays();
 
             totalUpgrades++;
@@ -709,7 +761,7 @@ window.onload = () => {
 
             critUpgradeCost += 0.5;
 
-            critUpgradeCostEl.innerText = critUpgradeCost;
+            critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
             updateMultiplierDisplays();
 
             totalUpgrades++;
@@ -730,7 +782,8 @@ window.onload = () => {
         if (transcensionShards >= 1) {
             transcensionShards -= 1;
             spentTranscensionShards += 1;
-            transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
+            prestigeShardMultiplier += 1;
+            transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
 
             updateMultiplierDisplays();
 
@@ -742,9 +795,6 @@ window.onload = () => {
     const unlockAutomationBtn = document.getElementById("unlockAutomationBtn");
     unlockAutomationBtn.addEventListener("click", () => {
         if (transcensionShards >= 10) {
-            transcensionShards -= 10;
-            transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
-
             automationUnlocked = true;
             const automationSection = document.getElementById("automationSection");
             if (automationSection) {
@@ -757,6 +807,29 @@ window.onload = () => {
         }
     });
 
+    const autoPrestigeBtn = document.getElementById("autoPrestigeBtn");
+    autoPrestigeBtn.addEventListener("click", () => {
+        if (transcensionShards >= 10 && !autoPrestigePurchased) {
+            transcensionShards -= 10;
+            transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
+
+            autoPrestigePurchased = true;
+            autoPrestigeBtn.disabled = true;
+            autoPrestigeBtn.classList.add('disabled');
+
+            const autoPrestigeThresholdEl = document.getElementById("autoPrestigeThreshold");
+            autoPrestigeThresholdEl.style.display = "block";
+
+            updateMultiplierDisplays();
+            updateButtonStates();
+        }
+    });
+
+    const autoPrestigeThresholdEl = document.getElementById("autoPrestigeThreshold");
+    autoPrestigeThresholdEl.addEventListener("input", () => {
+        autoPrestigeThreshold = parseInt(autoPrestigeThresholdEl.value) || 0;
+    });
+
     const actualTranscendBtn = document.getElementById("actualTranscendBtn");
     actualTranscendBtn.addEventListener("click", () => {
         const affordableShards = getAffordableShards(scoreMultiplier);
@@ -764,7 +837,7 @@ window.onload = () => {
 
         // Perform transcend: gain all affordable shards
         transcensionShards += affordableShards;
-        transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
+        transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
         updateMultiplierDisplays();
 
         // Reset multiplier, score, upgrades, and prestige upgrades
@@ -784,13 +857,13 @@ window.onload = () => {
         balls.push(new Ball(canvas.width / 2, 50, ballRadius));
 
         addBallCost = 2000;
-        addBallCostEl.innerText = addBallCost;
+        addBallCostEl.innerText = formatNumber(addBallCost);
 
         slotUpgradeCost = 1;
-        slotUpgradeCostEl.innerText = slotUpgradeCost;
+        slotUpgradeCostEl.innerText = formatNumber(slotUpgradeCost);
 
         critUpgradeCost = 0.5;
-        critUpgradeCostEl.innerText = critUpgradeCost;
+        critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
 
         slotUpgradePurchases = 0;
         critUpgradePurchases = 0;
@@ -850,7 +923,7 @@ window.onload = () => {
         balls.push(new Ball(canvas.width / 2, 50, ballRadius));
 
         addBallCost = 2000;
-        addBallCostEl.innerText = addBallCost;
+        addBallCostEl.innerText = formatNumber(addBallCost);
 
         if (lifetimePrestiges >= 1) {
             prestigeUpgradesUnlocked = true;
@@ -991,12 +1064,12 @@ window.onload = () => {
         const list = document.getElementById("statsList");
         list.innerHTML = "";
         const stats = [
-            { name: "Total Balls Dropped", value: totalBallsDropped },
-            { name: "Times Prestiged", value: lifetimePrestiges },
-            { name: "Times Transcended", value: transcendCount },
-            { name: "Lifetime Upgrades", value: totalUpgrades },
+            { name: "Total Balls Dropped", value: formatNumber(totalBallsDropped) },
+            { name: "Times Prestiged", value: formatNumber(lifetimePrestiges) },
+            { name: "Times Transcended", value: formatNumber(transcendCount) },
+            { name: "Lifetime Upgrades", value: formatNumber(totalUpgrades) },
             { name: "Lifetime Score", value: formatNumber(lifetimeScore) },
-            { name: "Total Critical Hits", value: totalCriticalHits },
+            { name: "Total Critical Hits", value: formatNumber(totalCriticalHits) },
             { name: "Achievements Unlocked", value: unlockedAchievements.length + " / " + achievements.length }
         ];
         for (let stat of stats) {
@@ -1066,6 +1139,13 @@ window.onload = () => {
             unlockAutomationBtn.classList.add('disabled');
         }
 
+        // Check for auto prestige button
+        if (transcensionShards >= 10 && automationUnlocked && !autoPrestigePurchased) {
+            autoPrestigeBtn.classList.remove('disabled');
+        } else {
+            autoPrestigeBtn.classList.add('disabled');
+        }
+
         // Update prestige info
         const prestigeInfo = document.getElementById("prestigeInfo");
         let prestigesToGain = 0;
@@ -1078,13 +1158,13 @@ window.onload = () => {
         }
         const multiplierGain = prestigesToGain * 0.5 * Math.pow(2, transcendCount);
         const newMultiplier = scoreMultiplier + multiplierGain;
-        prestigeInfo.innerText = `You will gain +${multiplierGain.toFixed(1)} multiplier (${prestigesToGain} prestige${prestigesToGain > 1 ? 's' : ''}), resulting in x${newMultiplier.toFixed(1)} total multiplier.`;
+        prestigeInfo.innerText = `You will gain +${formatNumber(multiplierGain)} multiplier (${formatNumber(prestigesToGain)} prestige${prestigesToGain > 1 ? 's' : ''}), resulting in x${formatNumber(newMultiplier)} total multiplier.`;
 
         // Update transcend info
         const shardsForInfo = getAffordableShards(scoreMultiplier);
         const cost = getTranscendCostForShards(shardsForInfo);
         if (shardsForInfo > 0) {
-            transcendInfo.innerText = `Cost: ${cost.toFixed(1)}x multiplier. You will gain ${shardsForInfo} transcension shard${shardsForInfo > 1 ? 's' : ''}.`;
+            transcendInfo.innerText = `Cost: ${formatNumber(cost)}x multiplier. You will gain ${formatNumber(shardsForInfo)} transcension shard${shardsForInfo > 1 ? 's' : ''}.`;
         } else {
             transcendInfo.innerText = `Cost: 5x multiplier for first shard. You will gain 0 shards (not enough multiplier).`;
         }
@@ -1108,14 +1188,14 @@ window.onload = () => {
 
         // Update displays with conditional visibility
         if (prestigeCount >= 1 || transcendCount >= 1) {
-            prestigeMultiplierEl.innerText = `Prestige Multiplier: x${scoreMultiplier.toFixed(1)}`;
+            prestigeMultiplierEl.innerText = `Prestige Multiplier: x${formatNumber(scoreMultiplier)}`;
             prestigeMultiplierEl.style.display = 'block';
         } else {
             prestigeMultiplierEl.style.display = 'none';
         }
 
         if (transcendCount >= 1) {
-            transcendMultiplierEl.innerText = `Transcend Multiplier: x${transcendMultiplier.toFixed(1)}`;
+            transcendMultiplierEl.innerText = `Transcend Multiplier: x${formatNumber(transcendMultiplier)}`;
             transcendMultiplierEl.style.display = 'block';
         } else {
             transcendMultiplierEl.style.display = 'none';
@@ -1189,7 +1269,7 @@ window.onload = () => {
 
     if (save.transcensionShards !== undefined) {
         transcensionShards = save.transcensionShards;
-        transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
+        transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
         updateMultiplierDisplays();
     }
 
@@ -1204,12 +1284,12 @@ window.onload = () => {
 
     if (save.addBallCost !== undefined) {
         addBallCost = save.addBallCost;
-        addBallCostEl.innerText = addBallCost;
+        addBallCostEl.innerText = formatNumber(addBallCost);
     }
 
     if (save.slotUpgradeCost !== undefined) {
         slotUpgradeCost = save.slotUpgradeCost;
-        slotUpgradeCostEl.innerText = slotUpgradeCost;
+        slotUpgradeCostEl.innerText = formatNumber(slotUpgradeCost);
     }
 
     if (save.balls !== undefined) {
@@ -1251,7 +1331,7 @@ window.onload = () => {
 
     if (save.critUpgradeCost !== undefined) {
         critUpgradeCost = save.critUpgradeCost;
-        critUpgradeCostEl.innerText = critUpgradeCost;
+        critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
     }
 
     // Apply slot upgrades to restore points
@@ -1311,6 +1391,14 @@ window.onload = () => {
         automationUnlocked = save.automationUnlocked;
     }
 
+    if (save.autoPrestigePurchased !== undefined) {
+        autoPrestigePurchased = save.autoPrestigePurchased;
+    }
+
+    if (save.autoPrestigeThreshold !== undefined) {
+        autoPrestigeThreshold = save.autoPrestigeThreshold;
+    }
+
     // Update transcend upgrades visibility after loading save data
     updateTranscendUpgradesVisibility();
 
@@ -1358,7 +1446,7 @@ window.onload = () => {
                 scoreEl.innerText = "Score: " + formatNumber(totalScore);
 
                 // Show offline progress popup
-                showSavePopup(`Welcome back! You earned ${formatNumber(offlineScore)} points and dropped ${offlineBalls.toLocaleString()} balls while away (${hoursAway.toFixed(1)} hours)!`, () => {
+                showSavePopup(`Welcome back! You earned ${formatNumber(offlineScore)} points and dropped ${formatNumber(offlineBalls)} balls while away (${hoursAway.toFixed(1)} hours)!`, () => {
                     // Optional: Switch to stats tab or something
                 });
             }
@@ -1389,6 +1477,34 @@ window.onload = () => {
         const unlockAutomationBtn = document.getElementById("unlockAutomationBtn");
         if (unlockAutomationBtn) {
             unlockAutomationBtn.style.display = "none";
+        }
+    }
+
+    // Show auto prestige input if purchased
+    if (autoPrestigePurchased) {
+        const autoPrestigeBtn = document.getElementById("autoPrestigeBtn");
+        if (autoPrestigeBtn) {
+            autoPrestigeBtn.disabled = true;
+            autoPrestigeBtn.classList.add('disabled');
+        }
+        const autoPrestigeThresholdEl = document.getElementById("autoPrestigeThreshold");
+        if (autoPrestigeThresholdEl) {
+            autoPrestigeThresholdEl.style.display = "block";
+            autoPrestigeThresholdEl.value = autoPrestigeThreshold;
+        }
+    }
+
+    // Show auto prestige input if purchased
+    if (autoPrestigePurchased) {
+        const autoPrestigeBtn = document.getElementById("autoPrestigeBtn");
+        if (autoPrestigeBtn) {
+            autoPrestigeBtn.disabled = true;
+            autoPrestigeBtn.classList.add('disabled');
+        }
+        const autoPrestigeThresholdEl = document.getElementById("autoPrestigeThreshold");
+        if (autoPrestigeThresholdEl) {
+            autoPrestigeThresholdEl.style.display = "block";
+            autoPrestigeThresholdEl.value = autoPrestigeThreshold;
         }
     }
 
@@ -1496,6 +1612,8 @@ window.onload = () => {
                     prestigeUpgradesUnlocked: prestigeUpgradesUnlocked,
                     transcendUpgradesUnlocked: transcendUpgradesUnlocked,
                     automationUnlocked: automationUnlocked,
+                    autoPrestigePurchased: autoPrestigePurchased,
+                    autoPrestigeThreshold: autoPrestigeThreshold,
                     prestigeShardMultiplier: prestigeShardMultiplier,
                     hasReached100k: hasReached100k,
                     fancyEffectsEnabled: fancyEffectsEnabled,
@@ -1563,10 +1681,12 @@ window.onload = () => {
         transcendCost = 5;
         transcensionShards = 0;
         spentTranscensionShards = 0;
-        transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
+        transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
         prestigeUpgradesUnlocked = false;
         transcendUpgradesUnlocked = false;
         automationUnlocked = false;
+        autoPrestigePurchased = false;
+        autoPrestigeThreshold = 0;
         hasReached100k = false;
         fancyEffectsEnabled = true;
         fancyEffectsToggleEl.checked = true;
@@ -1645,6 +1765,8 @@ window.onload = () => {
             prestigeUpgradesUnlocked: prestigeUpgradesUnlocked,
             transcendUpgradesUnlocked: transcendUpgradesUnlocked,
             automationUnlocked: automationUnlocked,
+            autoPrestigePurchased: autoPrestigePurchased,
+            autoPrestigeThreshold: autoPrestigeThreshold,
             prestigeShardMultiplier: prestigeShardMultiplier,
             hasReached100k: hasReached100k,
             fancyEffectsEnabled: fancyEffectsEnabled,
@@ -1683,10 +1805,10 @@ window.onload = () => {
             updateMultiplierDisplays();
 
             addBallCost = saveData.addBallCost || 2000;
-            addBallCostEl.innerText = addBallCost;
+            addBallCostEl.innerText = formatNumber(addBallCost);
 
             slotUpgradeCost = saveData.slotUpgradeCost || 1;
-            slotUpgradeCostEl.innerText = slotUpgradeCost;
+            slotUpgradeCostEl.innerText = formatNumber(slotUpgradeCost);
 
             balls.length = 0;
             for (let i = 0; i < (saveData.balls || 1); i++) {
@@ -1703,16 +1825,19 @@ window.onload = () => {
             critUpgradePurchases = saveData.critUpgradePurchases || 0;
             critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
             critUpgradeCost = saveData.critUpgradeCost || 0.5;
+            critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
             autosaveInterval = saveData.autosaveInterval || 60000;
             autosaveIntervalEl.value = autosaveInterval;
             transcendCount = saveData.transcendCount || 0;
             transcendCost = saveData.transcendCost || 5;
             transcensionShards = saveData.transcensionShards || 0;
             spentTranscensionShards = saveData.spentTranscensionShards || 0;
-            if (transcensionShardsEl) transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
+            if (transcensionShardsEl) transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
             prestigeUpgradesUnlocked = saveData.prestigeUpgradesUnlocked || false;
             transcendUpgradesUnlocked = saveData.transcendUpgradesUnlocked || false;
             automationUnlocked = saveData.automationUnlocked || false;
+            autoPrestigePurchased = saveData.autoPrestigePurchased || false;
+            autoPrestigeThreshold = saveData.autoPrestigeThreshold || 0;
             prestigeShardMultiplier = saveData.prestigeShardMultiplier || 1;
             hasReached100k = saveData.hasReached100k || false;
             fancyEffectsEnabled = saveData.fancyEffectsEnabled !== undefined ? saveData.fancyEffectsEnabled : true;
