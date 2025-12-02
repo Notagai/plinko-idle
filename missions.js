@@ -15,6 +15,12 @@ const missions = [
         description: 'Reach 5x Prestige multiplier to unlock Transcendence',
         target: 'multiplier',
         value: 5
+    },
+    {
+        id: '10_shards',
+        description: 'Reach 10 Transcendence shards to unlock Automation. (upgrade)',
+        target: 'transcend_shards',
+        value: 10
     }
 ];
 
@@ -132,7 +138,10 @@ class MissionSystem {
                 currentValue = gameState.totalCriticalHits || 0;
                 break;
             case 'multiplier':
-                currentValue = gameState.scoreMultiplier || 1;
+                currentValue = Math.round((gameState.scoreMultiplier || 1) * 10) / 10;
+                break;
+            case 'transcend_shards':
+                currentValue = gameState.transcensionShards || 0;
                 break;
             default:
                 currentValue = 0;

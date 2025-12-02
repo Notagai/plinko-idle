@@ -1,5 +1,4 @@
 window.onload = () => {
-
     // ----- ELEMENTS AND BASIC SETUP -----
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -16,6 +15,8 @@ window.onload = () => {
     let prestigeCount = 0; //total prestiges, does not reset even on next layers
     let lifetimePrestiges = 0; //lifetime prestiges across all transcends
 
+    let audioContext = null;
+
     let totalBallsDropped = 0;
     let totalUpgrades = 0;
     let slotUpgradePurchases = 0;
@@ -26,14 +27,19 @@ window.onload = () => {
     let transcendCount = 0;
     let transcendCost = 5;
     let transcensionShards = 0;
+    let spentTranscensionShards = 0;
     let prestigeShardMultiplier = 1;
     let prestigeUpgradesUnlocked = false;
     let transcendUpgradesUnlocked = false;
     let automationUnlocked = false;
     let hasReached100k = false;
     let fancyEffectsEnabled = true; // default enabled
+    let soundEffectsEnabled = true; // default enabled
     let autosaveInterval = 60000; // default 60 seconds
     let autosaveTimer = null;
+
+    // Initialize audio
+    initAudio();
 
     function startAutosave() {
         if (autosaveTimer) clearInterval(autosaveTimer);
@@ -60,9 +66,12 @@ window.onload = () => {
                         autosaveInterval: autosaveInterval,
                         transcendCount: transcendCount,
                         transcendCost: transcendCost,
+                        spentTranscensionShards: spentTranscensionShards,
                         prestigeShardMultiplier: prestigeShardMultiplier,
                         hasReached100k: hasReached100k,
                         fancyEffectsEnabled: fancyEffectsEnabled,
+                        soundEffectsEnabled: soundEffectsEnabled,
+                        lastSaveTime: Date.now(),
                         missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
                             currentMissionIndex: missionSystem.currentMissionIndex,
                             completedMissions: Array.from(missionSystem.completedMissions),
@@ -214,7 +223,10 @@ window.onload = () => {
         let exponent = Math.floor(Math.log10(num));
         let index = Math.floor(exponent / 3) - 2;
         if (index < 0) index = 0;
-        if (index >= suffixes.length) index = suffixes.length - 1;
+        if (index >= suffixes.length) {
+            // For very large numbers, use scientific notation
+            return num.toExponential(2);
+        }
         let divisor = Math.pow(10, 3 * (index + 2));
         let value = num / divisor;
         return value.toFixed(3) + ' ' + suffixes[index];
@@ -504,6 +516,59 @@ window.onload = () => {
         animate();
     }
 
+    // ----- SOUND EFFECTS -----
+    function initAudio() {
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            // Web Audio API not supported, sound effects will be disabled
+            audioContext = null;
+        }
+    }
+
+    function playSound(frequency, duration, type = 'sine') {
+        if (!soundEffectsEnabled || !audioContext) return;
+
+        try {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            oscillator.type = type;
+
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        } catch (e) {
+            console.warn('Error playing sound:', e);
+        }
+    }
+
+    function playBallSound() {
+        playSound(800, 0.1, 'sine'); // High pitch for ball drop
+    }
+
+    function playUpgradeSound() {
+        playSound(600, 0.2, 'triangle'); // Medium pitch for upgrades
+    }
+
+    function playPrestigeSound() {
+        playSound(400, 0.5, 'sawtooth'); // Low pitch for prestige
+    }
+
+    function playAchievementSound() {
+        // Play a sequence of notes
+        setTimeout(() => playSound(523, 0.15), 0);   // C
+        setTimeout(() => playSound(659, 0.15), 150); // E
+        setTimeout(() => playSound(784, 0.3), 300);  // G
+    }
+
+
     // ----- SCORING -----
     function checkScore(ball) {
         const bottomRow = pegs.slice(-(colsStart + rows - 1));
@@ -527,7 +592,7 @@ window.onload = () => {
             if (best !== null) {
                 best.offsetY = -5;
 
-                let scoreGained = Math.round(best.points * scoreMultiplier * Math.pow(2, transcensionShards) * prestigeShardMultiplier);
+                let scoreGained = Math.round(best.points * scoreMultiplier * Math.pow(1.1, transcensionShards + spentTranscensionShards));
 
                 // Critical hit check
                 let critChance = Math.min(0.5, 0.05 + critUpgradePurchases * 0.05);
@@ -547,6 +612,8 @@ window.onload = () => {
 
                 totalBallsDropped++;
 
+                playBallSound();
+
                 populateStats();
                 checkAchievements();
                 updateButtonStates();
@@ -561,7 +628,8 @@ window.onload = () => {
                         totalUpgrades,
                         totalCriticalHits,
                         updateMultiplierDisplays: updateMultiplierDisplays,
-                        scoreMultiplier
+                        scoreMultiplier,
+                        transcensionShards
                     });
                 }
 
@@ -602,6 +670,8 @@ window.onload = () => {
 
             totalUpgrades++;
 
+            playUpgradeSound();
+
             populateStats();
             checkAchievements();
             updateButtonStates();
@@ -624,6 +694,8 @@ window.onload = () => {
             totalUpgrades++;
             slotUpgradePurchases++;
 
+            playUpgradeSound();
+
             populateStats();
             checkAchievements();
             updateButtonStates();
@@ -644,6 +716,8 @@ window.onload = () => {
             critUpgradePurchases++;
             critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
 
+            playUpgradeSound();
+
             populateStats();
             checkAchievements();
             updateButtonStates();
@@ -655,9 +729,9 @@ window.onload = () => {
     spendShardBtn.addEventListener("click", () => {
         if (transcensionShards >= 1) {
             transcensionShards -= 1;
+            spentTranscensionShards += 1;
             transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
 
-            prestigeShardMultiplier *= 2;
             updateMultiplierDisplays();
 
             updateButtonStates();
@@ -737,6 +811,8 @@ window.onload = () => {
         // reset slots points
         buildSlots();
 
+        playPrestigeSound(); // Same sound for transcend
+
         populateStats();
         checkAchievements();
         updateButtonStates();
@@ -788,6 +864,8 @@ window.onload = () => {
 
         prestigeBtn.classList.add('disabled');
 
+        playPrestigeSound();
+
         checkAchievements();
         updateButtonStates();
         updateProgressBars();
@@ -815,6 +893,7 @@ window.onload = () => {
 
     const autosaveIntervalEl = document.getElementById("autosaveInterval");
     const fancyEffectsToggleEl = document.getElementById("fancyEffectsToggle");
+    const soundEffectsToggleEl = document.getElementById("soundEffectsToggle");
 
     autosaveIntervalEl.addEventListener("change", () => {
         autosaveInterval = parseInt(autosaveIntervalEl.value);
@@ -828,11 +907,17 @@ window.onload = () => {
         }
     });
 
+    soundEffectsToggleEl.addEventListener("change", () => {
+        soundEffectsEnabled = soundEffectsToggleEl.checked;
+    });
+
+
     // Set initial state
     fancyEffectsToggleEl.checked = fancyEffectsEnabled;
     if (window.backgroundEffects) {
         window.backgroundEffects.setEnabled(fancyEffectsEnabled);
     }
+    soundEffectsToggleEl.checked = soundEffectsEnabled;
 
     let savePopupTimeout = null;
 
@@ -888,6 +973,7 @@ window.onload = () => {
             })) {
                 ach.unlocked = true;
                 unlockedAchievements.push(ach.id);
+                playAchievementSound();
                 showSavePopup(`Achievement Unlocked: ${ach.name}!`, () => {
                     // Switch to stats tab
                     document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
@@ -1017,10 +1103,8 @@ window.onload = () => {
     }
 
     function updateMultiplierDisplays() {
-        // Calculate transcend multiplier based on both spent AND unspent shards
-        // Unspent shards: transcensionShards
-        // Spent shards: represented by prestigeShardMultiplier (which is 2^spent_shards)
-        const transcendMultiplier = Math.pow(2, transcensionShards) * prestigeShardMultiplier;
+        // Calculate transcend multiplier: each shard provides 10% compounding
+        const transcendMultiplier = Math.pow(1.1, transcensionShards + spentTranscensionShards);
 
         // Update displays with conditional visibility
         if (prestigeCount >= 1 || transcendCount >= 1) {
@@ -1107,6 +1191,14 @@ window.onload = () => {
         transcensionShards = save.transcensionShards;
         transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
         updateMultiplierDisplays();
+    }
+
+    if (save.spentTranscensionShards !== undefined) {
+        spentTranscensionShards = save.spentTranscensionShards;
+    }
+
+    if (save.prestigeShardMultiplier !== undefined) {
+        prestigeShardMultiplier = save.prestigeShardMultiplier;
     }
 
 
@@ -1234,12 +1326,43 @@ window.onload = () => {
         }
     }
 
+    if (save.soundEffectsEnabled !== undefined) {
+        soundEffectsEnabled = save.soundEffectsEnabled;
+        soundEffectsToggleEl.checked = soundEffectsEnabled;
+    }
+
     // Load mission progress
     if (save.missionProgress !== undefined && typeof missionSystem !== 'undefined' && missionSystem) {
         missionSystem.currentMissionIndex = save.missionProgress.currentMissionIndex || 0;
         missionSystem.completedMissions = new Set(save.missionProgress.completedMissions || []);
         missionSystem.allMissionsComplete = save.missionProgress.allMissionsComplete || false;
         missionSystem.updateMissionDisplay();
+    }
+
+    // Calculate offline progress
+    if (save.lastSaveTime !== undefined) {
+        const timeAway = Date.now() - save.lastSaveTime;
+        const hoursAway = timeAway / (1000 * 60 * 60);
+        const maxOfflineHours = 24; // Cap at 24 hours to prevent abuse
+
+        if (hoursAway > 0.01 && hoursAway <= maxOfflineHours) { // More than 36 seconds
+            const ballsAtSave = save.balls || 1;
+            const ballsPerSecond = ballsAtSave * 0.5; // Estimate based on ball count (adjust as needed)
+            const offlineBalls = Math.floor(ballsPerSecond * timeAway / 1000);
+            const offlineScore = Math.floor(offlineBalls * 1000 * (save.multiplier || 1) * Math.pow(1.1, (save.transcensionShards || 0) + (save.spentTranscensionShards || 0))); // Rough estimate
+
+            if (offlineScore > 0) {
+                totalScore += offlineScore;
+                lifetimeScore += offlineScore;
+                totalBallsDropped += offlineBalls;
+                scoreEl.innerText = "Score: " + formatNumber(totalScore);
+
+                // Show offline progress popup
+                showSavePopup(`Welcome back! You earned ${formatNumber(offlineScore)} points and dropped ${offlineBalls.toLocaleString()} balls while away (${hoursAway.toFixed(1)} hours)!`, () => {
+                    // Optional: Switch to stats tab or something
+                });
+            }
+        }
     }
 
     // Set unlocked flags
@@ -1302,6 +1425,7 @@ window.onload = () => {
         prestigeBtn.classList.remove('disabled');
     }
 
+
     // ----- MAIN LOOP -----
     function loop() {
         const currentTime = performance.now();
@@ -1328,9 +1452,11 @@ window.onload = () => {
                 balls,
                 totalUpgrades,
                 totalCriticalHits,
-                scoreMultiplier
+                scoreMultiplier,
+                transcensionShards
             });
         }
+
 
         requestAnimationFrame(loop);
     }
@@ -1366,12 +1492,15 @@ window.onload = () => {
                     transcendCount: transcendCount,
                     transcendCost: transcendCost,
                     transcensionShards: transcensionShards,
+                    spentTranscensionShards: spentTranscensionShards,
                     prestigeUpgradesUnlocked: prestigeUpgradesUnlocked,
                     transcendUpgradesUnlocked: transcendUpgradesUnlocked,
                     automationUnlocked: automationUnlocked,
                     prestigeShardMultiplier: prestigeShardMultiplier,
                     hasReached100k: hasReached100k,
                     fancyEffectsEnabled: fancyEffectsEnabled,
+                    soundEffectsEnabled: soundEffectsEnabled,
+                    lastSaveTime: Date.now(),
                     missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
                         currentMissionIndex: missionSystem.currentMissionIndex,
                         completedMissions: Array.from(missionSystem.completedMissions),
@@ -1433,6 +1562,7 @@ window.onload = () => {
         transcendCount = 0;
         transcendCost = 5;
         transcensionShards = 0;
+        spentTranscensionShards = 0;
         transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
         prestigeUpgradesUnlocked = false;
         transcendUpgradesUnlocked = false;
@@ -1443,6 +1573,8 @@ window.onload = () => {
         if (window.backgroundEffects) {
             window.backgroundEffects.setEnabled(true);
         }
+        soundEffectsEnabled = true;
+        soundEffectsToggleEl.checked = true;
         prestigeShardMultiplier = 1;
         autosaveInterval = 60000;
         autosaveIntervalEl.value = autosaveInterval;
@@ -1509,12 +1641,14 @@ window.onload = () => {
             transcendCount: transcendCount,
             transcendCost: transcendCost,
             transcensionShards: transcensionShards,
+            spentTranscensionShards: spentTranscensionShards,
             prestigeUpgradesUnlocked: prestigeUpgradesUnlocked,
             transcendUpgradesUnlocked: transcendUpgradesUnlocked,
             automationUnlocked: automationUnlocked,
             prestigeShardMultiplier: prestigeShardMultiplier,
             hasReached100k: hasReached100k,
             fancyEffectsEnabled: fancyEffectsEnabled,
+            soundEffectsEnabled: soundEffectsEnabled,
             missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
                 currentMissionIndex: missionSystem.currentMissionIndex,
                 completedMissions: Array.from(missionSystem.completedMissions),
@@ -1574,6 +1708,7 @@ window.onload = () => {
             transcendCount = saveData.transcendCount || 0;
             transcendCost = saveData.transcendCost || 5;
             transcensionShards = saveData.transcensionShards || 0;
+            spentTranscensionShards = saveData.spentTranscensionShards || 0;
             if (transcensionShardsEl) transcensionShardsEl.innerText = `Transcension Shards: ${transcensionShards}`;
             prestigeUpgradesUnlocked = saveData.prestigeUpgradesUnlocked || false;
             transcendUpgradesUnlocked = saveData.transcendUpgradesUnlocked || false;
@@ -1585,6 +1720,9 @@ window.onload = () => {
             if (window.backgroundEffects) {
                 window.backgroundEffects.setEnabled(fancyEffectsEnabled);
             }
+
+            soundEffectsEnabled = saveData.soundEffectsEnabled !== undefined ? saveData.soundEffectsEnabled : true;
+            soundEffectsToggleEl.checked = soundEffectsEnabled;
 
             // Load mission progress from import
             if (saveData.missionProgress !== undefined && typeof missionSystem !== 'undefined' && missionSystem) {
