@@ -40,6 +40,13 @@ window.onload = () => {
     let autosaveInterval = 60000; // default 60 seconds
     let autosaveTimer = null;
 
+    //random easter egg (will never implement)
+    function easterEgg(){
+        if (easterEgg){
+            console.log("easter egg")
+        }
+    }
+
     // Initialize audio
     initAudio();
 
@@ -838,13 +845,12 @@ window.onload = () => {
         // Perform transcend: gain all affordable shards
         transcensionShards += affordableShards;
         transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
+        transcendCount += 1;
         updateMultiplierDisplays();
 
         // Reset multiplier, score, upgrades, and prestige upgrades
         scoreMultiplier = 1;
         updateMultiplierDisplays();
-
-        transcendCount += 1;
 
         // reset everything except lifetime stats
         totalScore = 0;

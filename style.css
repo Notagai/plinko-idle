@@ -182,7 +182,8 @@
         cursor: not-allowed;
     }
 
-    #prestigeInfo, #transcendInfo {
+    #prestigeInfo,
+    #transcendInfo {
         border: 1px solid #fff;
         padding: 5px;
         border-radius: 5px;
@@ -236,7 +237,7 @@
         color: white;
         font-size: 12px;
         font-weight: bold;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
         pointer-events: none;
     }
 
@@ -303,9 +304,17 @@
     }
 
     @keyframes highlight {
-        0% { box-shadow: 0 0 0 0 rgba(255, 145, 0, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(255, 145, 0, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(255, 145, 0, 0); }
+        0% {
+            box-shadow: 0 0 0 0 rgba(255, 145, 0, 0.7);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(255, 145, 0, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(255, 145, 0, 0);
+        }
     }
 
     .tab-content {
@@ -417,7 +426,8 @@
     }
 
 
-    .pUpTitle, #multiplier {
+    .pUpTitle,
+    #multiplier {
         background-image: linear-gradient(90deg, #ffa600, #ff4800);
         -webkit-background-clip: text;
         background-clip: text;
@@ -540,7 +550,7 @@
         background: #555;
     }
 
-    #prestex{
+    #prestex {
         background-image: linear-gradient(90deg, #ffa600, #ff4800);
         -webkit-background-clip: text;
         background-clip: text;
@@ -548,7 +558,7 @@
         -webkit-text-fill-color: transparent;
     }
 
-    button{
+    button {
         margin: 5px;
     }
 
@@ -612,11 +622,11 @@
         font-size: 20px;
     }
 
-    #upgradeMenu{
+    #upgradeMenu {
         padding-bottom: 20px;
     }
 
-    #critChance{
+    #critChance {
         background-image: linear-gradient(90deg, #ffa600, #ff4800);
         -webkit-background-clip: text;
         background-clip: text;
@@ -624,7 +634,7 @@
         -webkit-text-fill-color: transparent;
     }
 
-    .trUpTitle{
+    .trUpTitle {
         background-image: linear-gradient(90deg, #0084ff, #0400ff);
         -webkit-background-clip: text;
         background-clip: text;
@@ -669,6 +679,7 @@
             transform: translateX(100%);
             opacity: 0;
         }
+
         to {
             transform: translateX(0);
             opacity: 1;

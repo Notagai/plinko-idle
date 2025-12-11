@@ -28,7 +28,7 @@ class BackgroundEffects {
     }
 
     createParticles() {
-        const numParticles = 50;
+        const numParticles = 100;
         for (let i = 0; i < numParticles; i++) {
             this.particles.push({
                 x: Math.random() * this.canvas.width,
