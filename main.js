@@ -39,6 +39,17 @@ window.onload = () => {
     let soundEffectsEnabled = true; // default enabled
     let autosaveInterval = 60000; // default 60 seconds
     let autosaveTimer = null;
+    let buyMode = "5"; // default buy mode (1, 5, 10, or all)
+
+    // Wilderness variables
+    let wildernessUnlocked = false;
+    let wildernessLevel = 0;
+    let wildernessProgress = 0;
+    let buildingMaterials = 0;
+    let wildernessShards = 0;
+    let wildernessMultiplier = 1.0;
+    let pegsRemoved = 0;
+    let pegRemovalCost = 100;
 
     //random easter egg (will never implement)
     function easterEgg(){
@@ -123,6 +134,23 @@ window.onload = () => {
     const transcendUpgrades = document.getElementById("transcendUpgrades");
     const transcendBtn = document.getElementById("transcendBtn");
 
+    // Wilderness UI elements
+    const wildernessTab = document.querySelector('.tab[data-tab="wilderness"]');
+    const wildernessContent = document.getElementById("wildernessContent");
+    const wildernessInfo = document.getElementById("wildernessInfo");
+    const unlockWildernessBtn = document.getElementById("unlockWildernessBtn");
+    const exploreWildernessBtn = document.getElementById("exploreWildernessBtn");
+    const removePegBtn = document.getElementById("removePegBtn");
+    const convertShardsBtn = document.getElementById("convertShardsBtn");
+    const wildernessLevelEl = document.getElementById("wildernessLevel");
+    const wildernessProgressEl = document.getElementById("wildernessProgress");
+    const buildingMaterialsEl = document.getElementById("buildingMaterials");
+    const wildernessShardsEl = document.getElementById("wildernessShards");
+    const wildernessMultiplierEl = document.getElementById("wildernessMultiplier");
+    const pegsRemovedEl = document.getElementById("pegsRemoved");
+    const pegRemovalCostEl = document.getElementById("pegRemovalCost");
+    const wildernessPegRemoval = document.getElementById("wildernessPegRemoval");
+
     let slotUpgradeCost = 1;
     let addBallCost = 2000;
 
@@ -168,6 +196,88 @@ window.onload = () => {
         }
     }
 
+    // Function to update wilderness tab visibility
+    function updateWildernessTabVisibility() {
+        if (wildernessTab) {
+            if (transcendCount >= 1) {
+                wildernessTab.classList.remove("hide");
+            } else {
+                wildernessTab.classList.add("hide");
+            }
+        }
+    }
+
+    // Function to update wilderness UI
+    function updateWildernessUI() {
+        if (wildernessUnlocked) {
+            wildernessInfo.style.display = "none";
+            wildernessContent.style.display = "block";
+            unlockWildernessBtn.style.display = "none";
+        } else {
+            wildernessInfo.style.display = "block";
+            wildernessContent.style.display = "none";
+            unlockWildernessBtn.style.display = "block";
+            
+            // Update unlock button text with current shard count
+            const conversionRate = Math.max(0.1, 1 - (transcensionShards * 0.05));
+            const effectiveRate = Math.floor(10 * conversionRate);
+            unlockWildernessBtn.innerText = `Unlock Wilderness (100 Shards) - You have ${formatNumber(transcensionShards)} shards`;
+        }
+
+        wildernessLevelEl.innerText = wildernessLevel;
+        wildernessProgressEl.innerText = wildernessProgress + "%";
+        buildingMaterialsEl.innerText = formatNumber(buildingMaterials);
+        wildernessShardsEl.innerText = formatNumber(wildernessShards);
+        wildernessMultiplierEl.innerText = "x" + formatNumber(wildernessMultiplier);
+        pegsRemovedEl.innerText = pegsRemoved;
+        pegRemovalCostEl.innerText = formatNumber(pegRemovalCost);
+
+        // Update conversion button text with current rate
+        const conversionRate = Math.max(0.1, 1 - (transcensionShards * 0.05));
+        const effectiveRate = Math.floor(10 * conversionRate);
+        convertShardsBtn.innerText = `Convert Shards (10:${effectiveRate} ratio) - You have ${formatNumber(wildernessShards)} wilderness shards`;
+
+        // Show peg removal section if wilderness level >= 5
+        if (wildernessLevel >= 5) {
+            wildernessPegRemoval.style.display = "block";
+        } else {
+            wildernessPegRemoval.style.display = "none";
+        }
+
+        updateWildernessButtonStates();
+    }
+
+    // Function to update wilderness button states
+    function updateWildernessButtonStates() {
+        if (wildernessUnlocked) {
+            unlockWildernessBtn.classList.add('disabled');
+        } else {
+            if (transcensionShards >= 100) {
+                unlockWildernessBtn.classList.remove('disabled');
+            } else {
+                unlockWildernessBtn.classList.add('disabled');
+            }
+        }
+
+        if (wildernessUnlocked) {
+            exploreWildernessBtn.classList.remove('disabled');
+        } else {
+            exploreWildernessBtn.classList.add('disabled');
+        }
+
+        if (buildingMaterials >= pegRemovalCost && wildernessLevel >= 5) {
+            removePegBtn.classList.remove('disabled');
+        } else {
+            removePegBtn.classList.add('disabled');
+        }
+
+        if (wildernessShards >= 10) {
+            convertShardsBtn.classList.remove('disabled');
+        } else {
+            convertShardsBtn.classList.add('disabled');
+        }
+    }
+
     // Function to calculate total cost for N shards (rounded up to nearest 0.5)
     function getTranscendCostForShards(shardCount) {
         if (shardCount <= 0) return 0;
@@ -190,6 +300,83 @@ window.onload = () => {
         }
 
         return Math.max(0, shardCount - 1); // Subtract 1 because the last iteration exceeded
+    }
+
+    // Wilderness exploration function
+    function exploreWilderness() {
+        if (!wildernessUnlocked) return;
+
+        // Calculate exponential rewards based on wilderness level
+        const baseMaterials = Math.pow(2, wildernessLevel) * 10;
+        const baseShards = Math.floor(Math.pow(1.5, wildernessLevel) * 0.1);
+        const baseMultiplier = 1 + (wildernessLevel * 0.01);
+
+        // Apply some randomness
+        const materialsGained = Math.floor(baseMaterials * (0.8 + Math.random() * 0.4));
+        const shardsGained = Math.floor(baseShards * (0.8 + Math.random() * 0.4));
+        const multiplierGain = baseMultiplier * (0.9 + Math.random() * 0.2);
+
+        // Add rewards
+        buildingMaterials += materialsGained;
+        wildernessShards += shardsGained;
+        wildernessMultiplier *= multiplierGain;
+
+        // Increase wilderness level and progress
+        wildernessProgress += 20;
+        if (wildernessProgress >= 100) {
+            wildernessLevel++;
+            wildernessProgress = 0;
+        }
+
+        // Update peg removal cost exponentially
+        pegRemovalCost = Math.floor(100 * Math.pow(1.5, pegsRemoved));
+
+        updateWildernessUI();
+        updateButtonStates();
+
+        // Show exploration results
+        showSavePopup(`Wilderness Exploration Complete! Gained ${formatNumber(materialsGained)} materials, ${formatNumber(shardsGained)} shards, and x${multiplierGain.toFixed(2)} multiplier!`);
+
+        playUpgradeSound();
+    }
+
+    // Peg removal function
+    function removePeg() {
+        if (buildingMaterials < pegRemovalCost || wildernessLevel < 5) return;
+
+        buildingMaterials -= pegRemovalCost;
+        pegsRemoved++;
+
+        // Increase peg removal cost for next time
+        pegRemovalCost = Math.floor(100 * Math.pow(1.5, pegsRemoved));
+
+        updateWildernessUI();
+        updateButtonStates();
+
+        showSavePopup(`Removed 1 peg! Efficiency increased. Cost: ${formatNumber(pegRemovalCost)} materials for next removal.`);
+        playUpgradeSound();
+    }
+
+    // Function to convert wilderness shards to transcension shards
+    function convertWildernessShards() {
+        if (wildernessShards <= 0) return;
+
+        // Convert at a rate that becomes less favorable as you have more transcension shards
+        // Base conversion: 10 wilderness shards = 1 transcension shard
+        // But reduce efficiency based on how many transcension shards you already have
+        const conversionRate = Math.max(0.1, 1 - (transcensionShards * 0.05));
+        const shardsToConvert = Math.min(wildernessShards, 10);
+        const transcensionShardsGained = Math.floor(shardsToConvert * conversionRate);
+
+        wildernessShards -= shardsToConvert;
+        transcensionShards += transcensionShardsGained;
+
+        transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
+        updateWildernessUI();
+        updateButtonStates();
+
+        showSavePopup(`Converted ${shardsToConvert} wilderness shards to ${transcensionShardsGained} transcension shard${transcensionShardsGained !== 1 ? 's' : ''}!`);
+        playUpgradeSound();
     }
 
     // Function to apply gradient colors to "Transcendence", "Prestige", and "Wilderness" words
@@ -231,7 +418,7 @@ window.onload = () => {
     });
     // ----- NUMBER FORMATTING -----
     function formatNumber(num) {
-        if (num < 1000000) return num.toLocaleString();
+        if (num < 1000000) return Math.floor(num).toLocaleString();
         const suffixes = ['million', 'billion', 'trillion', 'quadrillion', 'quintillion', 'sextillion', 'septillion', 'octillion', 'nonillion', 'decillion'];
         let exponent = Math.floor(Math.log10(num));
         let index = Math.floor(exponent / 3) - 2;
@@ -242,7 +429,14 @@ window.onload = () => {
         }
         let divisor = Math.pow(10, 3 * (index + 2));
         let value = num / divisor;
-        return value.toFixed(3) + ' ' + suffixes[index];
+        // Use fewer decimal places to avoid rounding errors, and only show decimals if needed
+        if (value >= 100) {
+            return Math.floor(value).toLocaleString() + ' ' + suffixes[index];
+        } else if (value >= 10) {
+            return value.toFixed(1) + ' ' + suffixes[index];
+        } else {
+            return value.toFixed(2) + ' ' + suffixes[index];
+        }
     }
 
     const horizontalSpacing = 50;
@@ -258,8 +452,23 @@ window.onload = () => {
     const balls = [];
     const slots = [];
     const walls = [];
-
-
+    
+    // expose to Physics module
+    window.pegs = pegs;
+    window.balls = balls;
+    window.slots = slots;
+    window.walls = walls;
+    window.canvas = canvas;
+    window.ctx = ctx;
+    window.horizontalSpacing = horizontalSpacing;
+    window.verticalSpacing = verticalSpacing;
+    window.colsStart = colsStart;
+    window.rows = rows;
+    window.gravity = gravity;
+    window.friction = friction;
+    // By default, keep using the original physics in `main.js`.
+    // Set this to true to enable the new physics module (physics.js).
+    window.usePhysicsModule = false;
 
     // ----- CANVAS RESIZE -----
     function resizeCanvas() {
@@ -297,7 +506,10 @@ window.onload = () => {
             const cols = colsStart + row;
             const offset = (boardWidth - horizontalSpacing * (cols - 1)) / 2;
 
-            for (let col = 0; col < cols; col++) {
+            // Only create pegs if we haven't removed too many
+            const pegsToCreate = Math.max(1, cols - Math.floor(pegsRemoved / rows));
+            
+            for (let col = 0; col < pegsToCreate; col++) {
                 pegs.push({
                     x: startX + offset + col * horizontalSpacing,
                     y: 150 + row * verticalSpacing,
@@ -332,7 +544,48 @@ window.onload = () => {
 
 
     // ----- BALL CLASS -----
-    class Ball {
+    // ----- PEGS/WALLS/SLOTS delegated to Physics (if present) -----
+    function makePegs(){
+        if (window.usePhysicsModule && window.Physics && window.Physics.makePegs) return window.Physics.makePegs();
+        const boardWidth = horizontalSpacing * (colsStart + rows - 2);
+        const startX = (canvas.width - boardWidth) / 2;
+
+        for (let row = 0; row < rows; row++) {
+            const cols = colsStart + row;
+            const offset = (boardWidth - horizontalSpacing * (cols - 1)) / 2;
+
+            for (let col = 0; col < cols; col++) {
+                pegs.push({
+                    x: startX + offset + col * horizontalSpacing,
+                    y: 150 + row * verticalSpacing,
+                    r: 6
+                });
+            }
+        }
+    }
+
+    function buildWalls(){
+        if (window.usePhysicsModule && window.Physics && window.Physics.buildWalls) return window.Physics.buildWalls();
+        const topRow = pegs.slice(0, colsStart);
+        const bottomRow = pegs.slice(-(colsStart + rows - 1));
+
+        walls.push({
+            x1: topRow[0].x,
+            y1: topRow[0].y,
+            x2: bottomRow[0].x,
+            y2: bottomRow[0].y
+        });
+
+        walls.push({
+            x1: topRow[topRow.length - 1].x,
+            y1: topRow[topRow.length - 1].y,
+            x2: bottomRow[bottomRow.length - 1].x,
+            y2: bottomRow[bottomRow.length - 1].y
+        });
+    }
+
+    // Ball class (use Physics.Ball if available)
+    const Ball = (window.usePhysicsModule && window.Physics && window.Physics.Ball) ? window.Physics.Ball : class {
         constructor(x, y, r) {
             this.x = x;
             this.y = y;
@@ -346,7 +599,6 @@ window.onload = () => {
             this.x += this.vx * delta;
             this.y += this.vy * delta;
 
-            // peg collisions
             for (let p of pegs) {
                 const dx = this.x - p.x;
                 const dy = this.y - p.y;
@@ -369,12 +621,12 @@ window.onload = () => {
                 }
             }
 
-            // wall collisions
             for (let w of walls) {
-                collideWall(this, w);
+                if (window.usePhysicsModule && window.Physics && window.Physics.collideWall) window.Physics.collideWall(this, w);
+                else collideWall(this, w);
             }
 
-            checkScore(this);
+            if (typeof checkScore === 'function') checkScore(this);
         }
 
         draw() {
@@ -383,12 +635,10 @@ window.onload = () => {
             ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
             ctx.fill();
         }
-    }
+    };
 
-
-
-    // ----- SLOTS -----
-    function buildSlots() {
+    function buildSlots(){
+        if (window.usePhysicsModule && window.Physics && window.Physics.buildSlots) return window.Physics.buildSlots();
         const bottomRow = pegs.slice(-(colsStart + rows - 1));
         const slotY = bottomRow[0].y + verticalSpacing / 2;
         const numSlots = bottomRow.length - 1;
@@ -411,55 +661,13 @@ window.onload = () => {
                 x: s.x,
                 width: e.x - s.x,
                 points: points,
-                offsetY: 0,
-                color: `rgb(${r},${g},0)`
+                color: `rgb(${r},${g},0)`,
+                offsetY: 0
             });
         }
     }
 
-
-
-    // ----- DRAWING -----
-    function drawPegs() {
-        ctx.fillStyle = "white";
-
-        for (let p of pegs) {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    function drawWalls() {
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 4;
-
-        for (let w of walls) {
-            ctx.beginPath();
-            ctx.moveTo(w.x1, w.y1);
-            ctx.lineTo(w.x2, w.y2);
-            ctx.stroke();
-        }
-    }
-
-    function drawSlots() {
-        const bottomRow = pegs.slice(-(colsStart + rows - 1));
-        const slotY = bottomRow[0].y + verticalSpacing / 2;
-
-        for (let s of slots) {
-            ctx.fillStyle = s.color;
-            ctx.fillRect(s.x, slotY + s.offsetY, s.width, 20);
-
-            ctx.fillStyle = "black";
-            ctx.fillText(formatNumber(s.points), s.x + s.width / 2 - 10, slotY + s.offsetY + 14);
-
-            s.offsetY *= 0.8;
-        }
-    }
-
-
-
-    // ----- WALL COLLISION -----
+    // fallback collideWall if Physics doesn't provide one
     function collideWall(ball, wall) {
         const lx = wall.x2 - wall.x1;
         const ly = wall.y2 - wall.y1;
@@ -496,7 +704,51 @@ window.onload = () => {
         }
     }
 
+    // ----- DRAW HELPERS -----
+    function drawPegs() {
+        if (!ctx) return;
+        ctx.save();
+        for (let p of pegs) {
+            ctx.beginPath();
+            ctx.fillStyle = '#999';
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
 
+    function drawWalls() {
+        if (!ctx) return;
+        ctx.save();
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 4;
+        for (let w of walls) {
+            ctx.beginPath();
+            ctx.moveTo(w.x1, w.y1);
+            ctx.lineTo(w.x2, w.y2);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function drawSlots() {
+        if (!ctx) return;
+        const bottomRow = pegs.slice(-(colsStart + rows - 1));
+        if (!bottomRow || bottomRow.length === 0) return;
+        const slotY = bottomRow[0].y + verticalSpacing / 2;
+        ctx.save();
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        for (let s of slots) {
+            ctx.fillStyle = s.color || '#333';
+            ctx.fillRect(s.x, slotY + s.offsetY, s.width, 20);
+            ctx.fillStyle = '#000';
+            ctx.fillText(formatNumber(s.points), s.x + s.width / 2, slotY + s.offsetY + 14);
+            s.offsetY *= 0.8;
+        }
+        ctx.restore();
+    }
+    
 
     // ----- FLYING TEXT -----
     function createFlyingText(x, y, text, color) {
@@ -605,7 +857,7 @@ window.onload = () => {
             if (best !== null) {
                 best.offsetY = -5;
 
-                let scoreGained = Math.round(best.points * scoreMultiplier * Math.pow(1.1, transcensionShards + spentTranscensionShards));
+                let scoreGained = Math.round(best.points * scoreMultiplier * Math.pow(1.1, transcensionShards + spentTranscensionShards) * wildernessMultiplier);
 
                 // Critical hit check
                 let critChance = Math.min(0.5, 0.05 + critUpgradePurchases * 0.05);
@@ -717,86 +969,78 @@ window.onload = () => {
 
     // ----- BUTTONS -----
     addBallBtn.addEventListener("click", () => {
-        if (totalScore >= addBallCost) {
-
+        let count = buyMode === "all" ? Infinity : parseInt(buyMode);
+        let purchased = 0;
+        while (purchased < count && totalScore >= addBallCost) {
             totalScore -= addBallCost;
-            scoreEl.innerText = "Score: " + formatNumber(totalScore);
-
             balls.push(new Ball(canvas.width / 2, 50, ballRadius));
-
             addBallCost = Math.floor(addBallCost * 1.6);
-            addBallCostEl.innerText = formatNumber(addBallCost);
-
             totalUpgrades++;
-
             playUpgradeSound();
-
-            populateStats();
-            checkAchievements();
-            updateButtonStates();
+            purchased++;
         }
+        scoreEl.innerText = "Score: " + formatNumber(totalScore);
+        addBallCostEl.innerText = formatNumber(addBallCost);
+        populateStats();
+        checkAchievements();
+        updateButtonStates();
     });
 
     upgradeBtn2.addEventListener("click", () => {
-        if (scoreMultiplier - slotUpgradeCost >= 1) {
-
+        let count = buyMode === "all" ? Infinity : parseInt(buyMode);
+        let purchased = 0;
+        while (purchased < count && scoreMultiplier - slotUpgradeCost >= 1) {
             for (let s of slots) {
                 s.points *= 2;
             }
-
             scoreMultiplier -= slotUpgradeCost;
             slotUpgradeCost *= 2;
-
-            slotUpgradeCostEl.innerText = formatNumber(slotUpgradeCost);
-            updateMultiplierDisplays();
-
             totalUpgrades++;
             slotUpgradePurchases++;
-
             playUpgradeSound();
-
-            populateStats();
-            checkAchievements();
-            updateButtonStates();
+            purchased++;
         }
+        slotUpgradeCostEl.innerText = formatNumber(slotUpgradeCost);
+        updateMultiplierDisplays();
+        populateStats();
+        checkAchievements();
+        updateButtonStates();
     });
 
     critUpgradeBtn.addEventListener("click", () => {
-        if (scoreMultiplier - critUpgradeCost >= 1) {
-
+        let count = buyMode === "all" ? Infinity : parseInt(buyMode);
+        let purchased = 0;
+        while (purchased < count && scoreMultiplier - critUpgradeCost >= 1) {
             scoreMultiplier -= critUpgradeCost;
-
             critUpgradeCost += 0.5;
-
-            critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
-            updateMultiplierDisplays();
-
             totalUpgrades++;
             critUpgradePurchases++;
-            critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
-
             playUpgradeSound();
-
-            populateStats();
-            checkAchievements();
-            updateButtonStates();
-
+            purchased++;
         }
+        critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
+        critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
+        updateMultiplierDisplays();
+        populateStats();
+        checkAchievements();
+        updateButtonStates();
     });
 
     const spendShardBtn = document.getElementById("spendShardBtn");
     spendShardBtn.addEventListener("click", () => {
-        if (transcensionShards >= 1) {
+        let count = buyMode === "all" ? Infinity : parseInt(buyMode);
+        let purchased = 0;
+        while (purchased < count && transcensionShards >= 1) {
             transcensionShards -= 1;
             spentTranscensionShards += 1;
             prestigeShardMultiplier += 1;
-            transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
-
-            updateMultiplierDisplays();
-
-            updateButtonStates();
-            updateProgressBars();
+            purchased++;
         }
+        transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
+
+        updateMultiplierDisplays();
+        updateButtonStates();
+        updateProgressBars();
     });
 
     const unlockAutomationBtn = document.getElementById("unlockAutomationBtn");
@@ -836,6 +1080,35 @@ window.onload = () => {
     autoPrestigeThresholdEl.addEventListener("input", () => {
         autoPrestigeThreshold = parseInt(autoPrestigeThresholdEl.value) || 0;
     });
+
+    // Wilderness button event listeners
+    unlockWildernessBtn.addEventListener("click", () => {
+        if (unlockWildernessBtn.classList.contains('disabled')) return;
+
+        if (transcensionShards >= 100) {
+            transcensionShards -= 100;
+            wildernessUnlocked = true;
+            wildernessLevel = 1;
+            wildernessProgress = 0;
+            buildingMaterials = 0;
+            wildernessShards = 0;
+            wildernessMultiplier = 1.0;
+            pegsRemoved = 0;
+            pegRemovalCost = 100;
+
+            transcensionShardsEl.innerText = `Transcension Shards: ${formatNumber(transcensionShards)}`;
+            updateWildernessUI();
+            updateWildernessTabVisibility();
+            updateButtonStates();
+
+            showSavePopup("Wilderness Unlocked! Start exploring to find valuable resources.");
+            playUpgradeSound();
+        }
+    });
+
+    exploreWildernessBtn.addEventListener("click", exploreWilderness);
+    removePegBtn.addEventListener("click", removePeg);
+    convertShardsBtn.addEventListener("click", convertWildernessShards);
 
     const actualTranscendBtn = document.getElementById("actualTranscendBtn");
     actualTranscendBtn.addEventListener("click", () => {
@@ -973,10 +1246,27 @@ window.onload = () => {
     const autosaveIntervalEl = document.getElementById("autosaveInterval");
     const fancyEffectsToggleEl = document.getElementById("fancyEffectsToggle");
     const soundEffectsToggleEl = document.getElementById("soundEffectsToggle");
+    const buyModeSelectEl = document.getElementById("buyModeSelect");
 
     autosaveIntervalEl.addEventListener("change", () => {
         autosaveInterval = parseInt(autosaveIntervalEl.value);
         startAutosave();
+    });
+
+    buyModeSelectEl.addEventListener("change", () => {
+        buyMode = buyModeSelectEl.value;
+    });
+
+    // Buy mode button listeners
+    const buyModeButtons = document.querySelectorAll(".buy-mode-btn");
+    buyModeButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            buyMode = btn.dataset.mode;
+            // Update active state
+            buyModeButtons.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            buyModeSelectEl.value = buyMode;
+        });
     });
 
     fancyEffectsToggleEl.addEventListener("change", () => {
@@ -997,6 +1287,7 @@ window.onload = () => {
         window.backgroundEffects.setEnabled(fancyEffectsEnabled);
     }
     soundEffectsToggleEl.checked = soundEffectsEnabled;
+    buyModeSelectEl.value = buyMode;
 
     let savePopupTimeout = null;
 
@@ -1162,7 +1453,7 @@ window.onload = () => {
             remainingScore -= threshold;
             threshold *= 2;
         }
-        const multiplierGain = prestigesToGain * 0.5 * Math.pow(2, transcendCount);
+        const multiplierGain = prestigesToGain * 0.5 * Math.pow(2, transcendCount) * prestigeShardMultiplier;
         const newMultiplier = scoreMultiplier + multiplierGain;
         prestigeInfo.innerText = `You will gain +${formatNumber(multiplierGain)} multiplier (${formatNumber(prestigesToGain)} prestige${prestigesToGain > 1 ? 's' : ''}), resulting in x${formatNumber(newMultiplier)} total multiplier.`;
 
@@ -1425,6 +1716,32 @@ window.onload = () => {
         soundEffectsToggleEl.checked = soundEffectsEnabled;
     }
 
+    // Load wilderness data
+    if (save.wildernessUnlocked !== undefined) {
+        wildernessUnlocked = save.wildernessUnlocked;
+    }
+    if (save.wildernessLevel !== undefined) {
+        wildernessLevel = save.wildernessLevel;
+    }
+    if (save.wildernessProgress !== undefined) {
+        wildernessProgress = save.wildernessProgress;
+    }
+    if (save.buildingMaterials !== undefined) {
+        buildingMaterials = save.buildingMaterials;
+    }
+    if (save.wildernessShards !== undefined) {
+        wildernessShards = save.wildernessShards;
+    }
+    if (save.wildernessMultiplier !== undefined) {
+        wildernessMultiplier = save.wildernessMultiplier;
+    }
+    if (save.pegsRemoved !== undefined) {
+        pegsRemoved = save.pegsRemoved;
+    }
+    if (save.pegRemovalCost !== undefined) {
+        pegRemovalCost = save.pegRemovalCost;
+    }
+
     // Load mission progress
     if (save.missionProgress !== undefined && typeof missionSystem !== 'undefined' && missionSystem) {
         missionSystem.currentMissionIndex = save.missionProgress.currentMissionIndex || 0;
@@ -1532,6 +1849,8 @@ window.onload = () => {
     updateMultiplierDisplays();
     updateTranscendUpgradesVisibility();
     updateTranscendSectionVisibility();
+    updateWildernessTabVisibility();
+    updateWildernessUI();
 
     // Backup call to ensure prestige tab visibility is correct after DOM is ready
     setTimeout(() => {
@@ -1624,6 +1943,14 @@ window.onload = () => {
                     hasReached100k: hasReached100k,
                     fancyEffectsEnabled: fancyEffectsEnabled,
                     soundEffectsEnabled: soundEffectsEnabled,
+                    wildernessUnlocked: wildernessUnlocked,
+                    wildernessLevel: wildernessLevel,
+                    wildernessProgress: wildernessProgress,
+                    buildingMaterials: buildingMaterials,
+                    wildernessShards: wildernessShards,
+                    wildernessMultiplier: wildernessMultiplier,
+                    pegsRemoved: pegsRemoved,
+                    pegRemovalCost: pegRemovalCost,
                     lastSaveTime: Date.now(),
                     missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
                         currentMissionIndex: missionSystem.currentMissionIndex,
@@ -1777,6 +2104,14 @@ window.onload = () => {
             hasReached100k: hasReached100k,
             fancyEffectsEnabled: fancyEffectsEnabled,
             soundEffectsEnabled: soundEffectsEnabled,
+            wildernessUnlocked: wildernessUnlocked,
+            wildernessLevel: wildernessLevel,
+            wildernessProgress: wildernessProgress,
+            buildingMaterials: buildingMaterials,
+            wildernessShards: wildernessShards,
+            wildernessMultiplier: wildernessMultiplier,
+            pegsRemoved: pegsRemoved,
+            pegRemovalCost: pegRemovalCost,
             missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
                 currentMissionIndex: missionSystem.currentMissionIndex,
                 completedMissions: Array.from(missionSystem.completedMissions),
@@ -1854,6 +2189,16 @@ window.onload = () => {
 
             soundEffectsEnabled = saveData.soundEffectsEnabled !== undefined ? saveData.soundEffectsEnabled : true;
             soundEffectsToggleEl.checked = soundEffectsEnabled;
+
+            // Load wilderness data from import
+            wildernessUnlocked = saveData.wildernessUnlocked || false;
+            wildernessLevel = saveData.wildernessLevel || 0;
+            wildernessProgress = saveData.wildernessProgress || 0;
+            buildingMaterials = saveData.buildingMaterials || 0;
+            wildernessShards = saveData.wildernessShards || 0;
+            wildernessMultiplier = saveData.wildernessMultiplier || 1.0;
+            pegsRemoved = saveData.pegsRemoved || 0;
+            pegRemovalCost = saveData.pegRemovalCost || 100;
 
             // Load mission progress from import
             if (saveData.missionProgress !== undefined && typeof missionSystem !== 'undefined' && missionSystem) {
@@ -1941,6 +2286,8 @@ window.onload = () => {
 
             exportImportPopup.style.display = "none";
             updateTranscendUpgradesVisibility();
+            updateWildernessTabVisibility();
+            updateWildernessUI();
             showSavePopup("Save imported successfully");
         } catch (error) {
             showSavePopup("Import failed: Invalid save data");
@@ -1951,4 +2298,4 @@ window.onload = () => {
     closeExportImport.addEventListener("click", () => {
         exportImportPopup.style.display = "none";
     });
-};
+}

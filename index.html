@@ -24,12 +24,24 @@
         <div class="tabs">
             <button class="tab active" data-tab="regular">Upgrades</button>
             <button class="tab hide" data-tab="prestige">Prestige</button>
+            <button class="tab hide" data-tab="wilderness">Wilderness</button>
             <button class="tab" data-tab="stats">Stats</button>
             <button class="tab" data-tab="controls">Game Controls</button>
         </div>
         <div class="tab-content">
             <div id="regular-tab" class="tab-pane active">
-                <h2>Upgrades</h2>
+                <h2>
+                    Upgrades
+                    <div class="buy-mode-selector">
+                        <label>Buy Quantity:</label>
+                        <div class="buy-mode-buttons">
+                            <button class="buy-mode-btn" data-mode="1">1</button>
+                            <button class="buy-mode-btn active" data-mode="5">5</button>
+                            <button class="buy-mode-btn" data-mode="10">10</button>
+                            <button class="buy-mode-btn" data-mode="all">Max</button>
+                        </div>
+                    </div>
+                </h2>
                 <button id="addBallBtn">
                     Add Ball
                     <span class="tooltip">
@@ -58,7 +70,7 @@
                     </button>
                 </div>
                 <div id="transcendUpgrades" style="display:none">
-                    <h2 class="trUpTitle">Transcendence</h2>
+                    <h2 class="trUpTitle">Transcendence Upgrades</h2>
                     <div id="transcensionShards">Transcension Shards: 0</div>
                     <button id="spendShardBtn">
                         Transcended Boost
@@ -124,6 +136,34 @@
                 <h2>Achievements</h2>
                 <div id="achievementsList"></div>
             </div>
+            <div id="wilderness-tab" class="tab-pane">
+                <h2 class="wildernessTitle">Wilderness</h2>
+                <div id="wildernessInfo">
+                    <p>Explore the Wilderness to discover shards and multipliers. Costs 100 Transcend Shards to unlock.</p>
+                    <p>The Wilderness offers exponential rewards that grow as you explore deeper. You can find building materials for your spaceship, special wilderness shards, and permanent multiplier boosts.</p>
+                    <button id="unlockWildernessBtn">Unlock Wilderness (100 Shards)</button>
+                </div>
+                <div id="wildernessContent" style="display:none">
+                    <div id="wildernessStats">
+                        <p>Wilderness Level: <span id="wildernessLevel">0</span></p>
+                        <p>Exploration Progress: <span id="wildernessProgress">0%</span></p>
+                    </div>
+                    <button id="exploreWildernessBtn">Explore Wilderness</button>
+                    <div id="wildernessRewards">
+                        <h3>Rewards:</h3>
+                        <p>Building Materials: <span id="buildingMaterials">0</span></p>
+                        <p>Shards Found: <span id="wildernessShards">0</span></p>
+                        <p>Multiplier Boost: <span id="wildernessMultiplier">x1.0</span></p>
+                        <button id="convertShardsBtn">Convert Shards to Transcension (10:1)</button>
+                    </div>
+                    <div id="wildernessPegRemoval" style="display:none">
+                        <h3>Peg Removal:</h3>
+                        <p>Remove pegs to increase efficiency. Each removal costs building materials.</p>
+                        <button id="removePegBtn">Remove Peg (Cost: <span id="pegRemovalCost">100</span> materials)</button>
+                        <p>Pegs Removed: <span id="pegsRemoved">0</span></p>
+                    </div>
+                </div>
+            </div>
             <div id="controls-tab" class="tab-pane">
                 <h2>Game Controls</h2>
                 <div>
@@ -133,6 +173,15 @@
                         <option value="30000">30 seconds</option>
                         <option value="60000" selected>60 seconds</option>
                         <option value="120000">120 seconds</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="buyModeSelect">Buy Mode:</label>
+                    <select id="buyModeSelect">
+                        <option value="1">Buy 1</option>
+                        <option value="5" selected>Buy 5</option>
+                        <option value="10">Buy 10</option>
+                        <option value="all">Buy All</option>
                     </select>
                 </div>
                 <div>
@@ -153,6 +202,8 @@
     <script src="achievements.js"></script>
     <script src="missions.js"></script>
     <script src="effects.js"></script>
+    <script src="decimal.js"></script>
+    <script src="physics.js"></script>
     <script src="main.js"></script>
 
     <div id="savePopup" role="status" aria-live="polite">
@@ -179,7 +230,7 @@
         </div>
     </div>
 
-    <div id="version">Plinko Incremental by Notagai | Pre-Alpha v0.1.8</div>
+    <div id="version">Plinko Incremental by Notagai | Pre-Alpha v0.1.9</div>
 
 </body>
 

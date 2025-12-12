@@ -24,6 +24,10 @@
 
     #upgradePanel h2 {
         margin-top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
     }
 
     #upgradePanel button {
@@ -331,18 +335,29 @@
     }
 
     #upgradeMenu button {
-        background: #222;
+        background: linear-gradient(135deg, #2a2a2a, #333);
         color: #fff;
-        border: none;
-        padding: 10px;
-        border-radius: 5px;
+        border: 1px solid #444;
+        padding: 12px;
+        border-radius: 6px;
         cursor: pointer;
         position: relative;
         width: 100%;
+        margin: 8px 0;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        font-size: 0.95em;
     }
 
     #upgradeMenu button:hover:not(.disabled) {
-        background: #333;
+        background: linear-gradient(135deg, #3a3a3a, #444);
+        border-color: #555;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+    }
+
+    #upgradeMenu button:active:not(.disabled) {
+        transform: translateY(0);
     }
 
     #upgradeMenu button.disabled {
@@ -352,6 +367,121 @@
 
     #upgradeMenu button:hover .tooltip {
         display: block;
+    }
+
+    .upgrade-button-group {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 20px;
+        background: linear-gradient(135deg, #1a1a1a, #222);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #333;
+    }
+
+    .upgrade-button-group button {
+        width: 100%;
+        margin: 0;
+        padding: 12px;
+        background: linear-gradient(135deg, #2a2a2a, #333);
+        border: 1px solid #444;
+        color: #fff;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        font-size: 0.95em;
+    }
+
+    .upgrade-button-group button:hover:not(.disabled) {
+        background: linear-gradient(135deg, #3a3a3a, #444);
+        border-color: #555;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+    }
+
+    .upgrade-button-group button:active:not(.disabled) {
+        transform: translateY(0);
+    }
+
+    .upgrade-button-group button:first-child {
+        grid-column: 1;
+    }
+
+    .upgrade-button-group button:nth-child(2),
+    .upgrade-button-group button:nth-child(3) {
+        padding: 12px;
+        font-size: 0.85em;
+        font-weight: 600;
+    }
+
+    .upgrade-button-group button.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .buy-mode-selector {
+        display: flex;
+        float: right;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 4px;
+        background: transparent;
+        border-radius: 3px;
+        border: none;
+        margin: 0;
+        flex-shrink: 0;
+    }
+
+    .buy-mode-selector label {
+        display: none;
+        margin-bottom: 0;
+        font-weight: 600;
+        font-size: 0.75em;
+        color: #aaa;
+        white-space: nowrap;
+    }
+
+    .buy-mode-buttons {
+        display: flex;
+        gap: 2px;
+    }
+
+    .buy-mode-btn {
+        padding: 0px 2px;
+        background: linear-gradient(135deg, #2a2a2a, #333);
+        border: 1px solid #555;
+        color: #fff;
+        border-radius: 3px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px !important;
+        transition: all 0.2s ease;
+        min-width: 20px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .buy-mode-btn:hover {
+        background: linear-gradient(135deg, #3a3a3a, #444);
+        border-color: #666;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(255, 255, 255, 0.1);
+    }
+
+    .buy-mode-btn.active {
+        background: linear-gradient(135deg, #ffa600, #ff6800);
+        border-color: #ff4800;
+        color: #fff;
+        box-shadow: 0 0 8px rgba(255, 166, 0, 0.4);
+    }
+
+    .buy-mode-btn.active:hover {
+        background: linear-gradient(135deg, #ffb820, #ff7800);
+        border-color: #ff5800;
     }
 
     .tooltip {
@@ -779,6 +909,99 @@
         -webkit-text-fill-color: transparent;
     }
 
+    .wildernessTitle {
+        background-image: linear-gradient(90deg, #00ff88, #00cc6a);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+    }
+
+    #wildernessInfo {
+        background: #222;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        border: 1px solid #00cc6a;
+        box-shadow: 0 0 10px rgba(0, 204, 106, 0.2);
+    }
+
+    #wildernessInfo p {
+        margin: 8px 0;
+        color: #ccc;
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    #wildernessInfo p:first-child {
+        font-weight: bold;
+        color: #00ff88;
+        font-size: 15px;
+    }
+
+    #wildernessContent {
+        background: #1a1a1a;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #008844;
+    }
+
+    #wildernessStats {
+        margin-bottom: 15px;
+        padding: 10px;
+        background: #2a2a2a;
+        border-radius: 5px;
+        border: 1px solid #006633;
+    }
+
+    #wildernessRewards {
+        margin-top: 15px;
+        padding: 10px;
+        background: #2a2a2a;
+        border-radius: 5px;
+        border: 1px solid #006633;
+    }
+
+    #wildernessPegRemoval {
+        margin-top: 15px;
+        padding: 10px;
+        background: #2a2a2a;
+        border-radius: 5px;
+        border: 1px solid #006633;
+    }
+
+    #unlockWildernessBtn,
+    #exploreWildernessBtn,
+    #removePegBtn,
+    #convertShardsBtn {
+        background: linear-gradient(90deg, #008844, #00cc6a);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        margin: 5px 0;
+        width: 100%;
+        transition: all 0.2s ease;
+    }
+
+    #unlockWildernessBtn:hover:not(.disabled),
+    #exploreWildernessBtn:hover:not(.disabled),
+    #removePegBtn:hover:not(.disabled) {
+        background: linear-gradient(90deg, #00994d, #00dd77);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+    }
+
+    #unlockWildernessBtn.disabled,
+    #exploreWildernessBtn.disabled,
+    #removePegBtn.disabled,
+    #convertShardsBtn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
     .automationTitle {
         background-image: linear-gradient(90deg, #ffffff, #cccccc);
         -webkit-background-clip: text;
@@ -817,4 +1040,75 @@
         color: #ccc;
         margin: 5px 0 10px 0;
         line-height: 1.4;
+    }
+
+    /* Form controls styling */
+    #controls-tab div {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: linear-gradient(135deg, #1a1a1a, #222);
+        border-radius: 8px;
+        border: 1px solid #333;
+    }
+
+    #controls-tab label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        font-size: 0.95em;
+        color: #fff;
+    }
+
+    #controls-tab select,
+    #controls-tab input[type="checkbox"] {
+        accent-color: #ffa600;
+    }
+
+    #controls-tab select {
+        width: 100%;
+        padding: 10px;
+        background: linear-gradient(135deg, #2a2a2a, #333);
+        color: #fff;
+        border: 1px solid #444;
+        border-radius: 6px;
+        font-size: 0.9em;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    #controls-tab select:hover {
+        border-color: #555;
+        box-shadow: 0 2px 8px rgba(255, 255, 255, 0.05);
+    }
+
+    #controls-tab select:focus {
+        outline: none;
+        border-color: #ffa600;
+        box-shadow: 0 0 8px rgba(255, 166, 0, 0.3);
+    }
+
+    #controls-tab input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+
+    #controls-tab input[type="checkbox"] + label {
+        display: inline;
+        margin-bottom: 0;
+        margin-left: 0;
+    }
+
+    #upgradeMenu h2 {
+        margin-top: 20px;
+        margin-bottom: 12px;
+        font-size: 1.3em;
+        border-bottom: 2px solid #333;
+        padding-bottom: 8px;
+    }
+
+    #upgradeMenu h2:first-child {
+        margin-top: 0;
     }
