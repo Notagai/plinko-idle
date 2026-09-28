@@ -106,7 +106,7 @@
 
         const dist = Math.hypot(dx, dy);
 
-        if (dist < ball.r) {
+        if (dist > 0 && dist < ball.r) {
             const nx = dx / dist;
             const ny = dy / dist;
 
