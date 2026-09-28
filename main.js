@@ -1042,7 +1042,7 @@ window.onload = () => {
             purchased++;
         }
         critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
-        critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
+        critChanceEl.innerText = `Crit Chance: ${Math.min(50, 5 + critUpgradePurchases * 5)}%`;
         updateMultiplierDisplays();
         populateStats();
         checkAchievements();
@@ -1714,7 +1714,7 @@ window.onload = () => {
 
     if (save.critUpgradePurchases !== undefined) {
         critUpgradePurchases = save.critUpgradePurchases;
-        critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
+        critChanceEl.innerText = `Crit Chance: ${Math.min(50, 5 + critUpgradePurchases * 5)}%`;
     }
 
     if (save.critUpgradeCost !== undefined) {
@@ -2191,7 +2191,7 @@ window.onload = () => {
             totalCriticalHits = saveData.totalCriticalHits;
             nonCritStreak = saveData.nonCritStreak;
             critUpgradePurchases = saveData.critUpgradePurchases;
-            critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
+            critChanceEl.innerText = `Crit Chance: ${Math.min(50, 5 + critUpgradePurchases * 5)}%`;
             critUpgradeCost = saveData.critUpgradeCost || 0.5;
             critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
             autosaveInterval = saveData.autosaveInterval || 60000;
