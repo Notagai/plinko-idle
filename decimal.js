@@ -3,9 +3,13 @@
     class Decimal {
         constructor(mantissa, exponent){
             // mantissa is a Number between [1,10) or 0
-            this.m = mantissa;
-            this.e = exponent; // integer exponent base 10
-            if (this.m === 0) this.e = 0;
+            this.m = Number(mantissa);
+            this.e = Number.isFinite(exponent) ? Math.trunc(exponent) : 0;
+            // Never allow NaN/Infinity into normalize(), which would otherwise loop forever.
+            if (!Number.isFinite(this.m) || this.m === 0) {
+                this.m = 0;
+                this.e = 0;
+            }
             this.normalize();
         }
 
@@ -24,6 +28,11 @@
         }
 
         normalize(){
+            if (!Number.isFinite(this.m) || !Number.isFinite(this.e)) {
+                this.m = 0;
+                this.e = 0;
+                return;
+            }
             if (this.m === 0) { this.e = 0; return; }
             while (Math.abs(this.m) >= 10){ this.m /= 10; this.e += 1; }
             while (Math.abs(this.m) < 1 && this.m !== 0){ this.m *= 10; this.e -= 1; }
@@ -61,11 +70,16 @@
         }
 
         mulNumber(n){
-            return Decimal.fromNumber(this.toNumber() * n);
+            if (!Number.isFinite(n)) return new Decimal(0, 0);
+            if (n === 0 || this.isZero()) return new Decimal(0, 0);
+            const factor = Decimal.fromNumber(Math.abs(n));
+            const sign = n < 0 ? -1 : 1;
+            return new Decimal(this.m * factor.m * sign, this.e + factor.e);
         }
 
         div(other){
             if (!(other instanceof Decimal)) other = Decimal.fromNumber(other);
+            if (other.isZero()) throw new RangeError("Decimal division by zero");
             return new Decimal(this.m / other.m, this.e - other.e);
         }
 

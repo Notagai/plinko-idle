@@ -22,6 +22,7 @@ window.onload = () => {
     let slotUpgradePurchases = 0;
     let unlockedAchievements = [];
     let totalCriticalHits = 0;
+    let nonCritStreak = 0; // Bad-luck protection: at most 20 scored balls between crits.
     let critUpgradePurchases = 0;
     let critUpgradeCost = 0.5;
     let transcendCount = 0;
@@ -51,11 +52,9 @@ window.onload = () => {
     let pegsRemoved = 0;
     let pegRemovalCost = 100;
 
-    //random easter egg (will never implement)
-    function easterEgg(){
-        if (easterEgg){
-            console.log("easter egg")
-        }
+    // Reserved hook for future easter eggs. Keep it side-effect free until a feature is added.
+    function easterEgg() {
+        return false;
     }
 
     function createSaveData() {
@@ -73,6 +72,7 @@ window.onload = () => {
             slotUpgradePurchases,
             unlockedAchievements,
             totalCriticalHits,
+            nonCritStreak,
             critUpgradePurchases,
             critUpgradeCost,
             autosaveInterval,
@@ -322,7 +322,8 @@ window.onload = () => {
 
         // Calculate exponential rewards based on wilderness level
         const baseMaterials = Math.pow(2, wildernessLevel) * 10;
-        const baseShards = Math.floor(Math.pow(1.5, wildernessLevel) * 0.1);
+        // Early exploration should always feel rewarding; scaling starts after the guaranteed first shard.
+        const baseShards = Math.max(1, Math.floor(Math.pow(1.5, wildernessLevel) * 0.1));
         const baseMultiplier = 1 + (wildernessLevel * 0.01);
 
         // Apply some randomness
@@ -501,12 +502,10 @@ window.onload = () => {
             for (let slot of slots) slot.points *= 2;
         }
 
-        // Reset all balls to prevent cheating
+        // Preserve active balls across resizes instead of teleporting/resetting them.
         for (let b of balls) {
-            b.x = canvas.width / 2;
-            b.y = 50;
-            b.vx = (Math.random() - 0.5) * 6;
-            b.vy = 1 + Math.random() * 2;
+            b.x = Math.min(canvas.width - b.r, Math.max(b.r, b.x));
+            b.y = Math.min(canvas.height - b.r, Math.max(0, b.y));
         }
     }
 
@@ -622,7 +621,7 @@ window.onload = () => {
                 const dy = this.y - p.y;
                 const dist = Math.hypot(dx, dy);
 
-                if (dist < this.r + p.r) {
+                if (dist > 0 && dist < this.r + p.r) {
                     const overlap = this.r + p.r - dist;
                     const nx = dx / dist;
                     const ny = dy / dist;
@@ -705,7 +704,7 @@ window.onload = () => {
 
         const dist = Math.hypot(dx, dy);
 
-        if (dist < ball.r) {
+        if (dist > 0 && dist < ball.r) {
             const nx = dx / dist;
             const ny = dy / dist;
 
@@ -879,7 +878,13 @@ window.onload = () => {
 
                 // Critical hit check
                 let critChance = Math.min(0.5, 0.05 + critUpgradePurchases * 0.05);
-                let isCrit = Math.random() < critChance;
+                const guaranteedCrit = nonCritStreak >= 19;
+                let isCrit = guaranteedCrit || Math.random() < critChance;
+                if (isCrit) {
+                    nonCritStreak = 0;
+                } else {
+                    nonCritStreak++;
+                }
                 if (isCrit) {
                     let critMultiplier = 2 + prestigeCount * 0.2;
                     scoreGained = Math.round(scoreGained * critMultiplier);
@@ -1037,7 +1042,7 @@ window.onload = () => {
             purchased++;
         }
         critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
-        critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
+        critChanceEl.innerText = `Crit Chance: ${Math.min(50, 5 + critUpgradePurchases * 5)}%`;
         updateMultiplierDisplays();
         populateStats();
         checkAchievements();
@@ -1558,6 +1563,72 @@ window.onload = () => {
         transcendProgressFill.style.width = transcendProgress + "%";
     }
 
+    // ----- SAVE VALIDATION -----
+    function finiteNumber(value, fallback, min = 0, max = Number.MAX_SAFE_INTEGER) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return fallback;
+        return Math.min(max, Math.max(min, n));
+    }
+
+    function finiteInteger(value, fallback, min = 0, max = Number.MAX_SAFE_INTEGER) {
+        return Math.floor(finiteNumber(value, fallback, min, max));
+    }
+
+    function sanitizeSaveData(input) {
+        if (!input || typeof input !== "object" || Array.isArray(input)) {
+            throw new Error("Save data must be an object");
+        }
+
+        const out = { ...input };
+        const integerFields = [
+            "balls", "prestigeCount", "lifetimePrestiges", "totalBallsDropped", "totalUpgrades",
+            "nonCritStreak",
+            "slotUpgradePurchases", "critUpgradePurchases", "transcendCount", "transcensionShards",
+            "spentTranscensionShards", "wildernessLevel", "wildernessProgress", "buildingMaterials",
+            "wildernessShards", "pegsRemoved"
+        ];
+        for (const key of integerFields) out[key] = finiteInteger(out[key], 0, 0, 100000000);
+
+        const numberFields = [
+            "score", "lifetimeScore", "multiplier", "addBallCost", "slotUpgradeCost", "critUpgradeCost",
+            "transcendCost", "prestigeShardMultiplier", "autoPrestigeThreshold", "wildernessMultiplier",
+            "pegRemovalCost"
+        ];
+        for (const key of numberFields) out[key] = finiteNumber(out[key], key === "multiplier" || key === "prestigeShardMultiplier" || key === "wildernessMultiplier" ? 1 : 0, 0, Number.MAX_SAFE_INTEGER);
+
+        out.balls = Math.min(out.balls, 100000);
+        // Keep exponent-like progression values finite and responsive even for tampered saves.
+        out.prestigeCount = Math.min(out.prestigeCount, 1000000);
+        out.lifetimePrestiges = Math.min(out.lifetimePrestiges, 1000000);
+        out.transcendCount = Math.min(out.transcendCount, 100);
+        out.autoPrestigeThreshold = Math.min(out.autoPrestigeThreshold, 100);
+        out.critUpgradePurchases = Math.min(out.critUpgradePurchases, 9);
+        out.nonCritStreak = Math.min(out.nonCritStreak, 19);
+        out.wildernessLevel = Math.min(out.wildernessLevel, 1000);
+        out.autosaveInterval = [15000, 30000, 60000, 120000].includes(Number(out.autosaveInterval)) ? Number(out.autosaveInterval) : 60000;
+        out.unlockedAchievements = Array.isArray(out.unlockedAchievements) ? out.unlockedAchievements.filter(v => typeof v === "string").slice(0, 1000) : [];
+        out.fancyEffectsEnabled = out.fancyEffectsEnabled !== false;
+        out.soundEffectsEnabled = out.soundEffectsEnabled !== false;
+        out.prestigeUpgradesUnlocked = out.prestigeUpgradesUnlocked === true;
+        out.transcendUpgradesUnlocked = out.transcendUpgradesUnlocked === true;
+        out.automationUnlocked = out.automationUnlocked === true;
+        out.autoPrestigePurchased = out.autoPrestigePurchased === true;
+        out.hasReached100k = out.hasReached100k === true;
+        out.wildernessUnlocked = out.wildernessUnlocked === true;
+        out.lastSaveTime = finiteNumber(out.lastSaveTime, Date.now(), 0, Date.now());
+
+        if (out.missionProgress && typeof out.missionProgress === "object" && !Array.isArray(out.missionProgress)) {
+            out.missionProgress = {
+                currentMissionIndex: finiteInteger(out.missionProgress.currentMissionIndex, 0, 0, missions.length),
+                completedMissions: Array.isArray(out.missionProgress.completedMissions) ? out.missionProgress.completedMissions.filter(v => typeof v === "string").slice(0, 1000) : [],
+                allMissionsComplete: out.missionProgress.allMissionsComplete === true
+            };
+        } else {
+            out.missionProgress = null;
+        }
+        return out;
+    }
+
     // ----- MISSION SYSTEM -----
     // Initialize mission system
     const missionSystem = new MissionSystem();
@@ -1568,11 +1639,7 @@ window.onload = () => {
     if (rawSave) {
         try {
             const parsedSave = JSON.parse(rawSave);
-            if (parsedSave && typeof parsedSave === "object" && !Array.isArray(parsedSave)) {
-                save = parsedSave;
-            } else {
-                throw new Error("Save data is not an object");
-            }
+            save = sanitizeSaveData(parsedSave);
         } catch (error) {
             console.warn("Ignoring invalid local save data:", error);
             showSavePopup("Invalid save data ignored");
@@ -1655,7 +1722,7 @@ window.onload = () => {
 
     if (save.critUpgradePurchases !== undefined) {
         critUpgradePurchases = save.critUpgradePurchases;
-        critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
+        critChanceEl.innerText = `Crit Chance: ${Math.min(50, 5 + critUpgradePurchases * 5)}%`;
     }
 
     if (save.critUpgradeCost !== undefined) {
@@ -1684,6 +1751,9 @@ window.onload = () => {
 
     if (save.totalCriticalHits !== undefined) {
         totalCriticalHits = save.totalCriticalHits;
+    }
+    if (save.nonCritStreak !== undefined) {
+        nonCritStreak = save.nonCritStreak;
     }
 
 
@@ -1910,9 +1980,10 @@ window.onload = () => {
     // ----- MAIN LOOP -----
     function loop() {
         const currentTime = performance.now();
-        const deltaTime = (currentTime - lastTime) / 1000;
+        // Clamp large frame gaps (tab switching/background throttling) so balls cannot tunnel through the board.
+        const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.05);
         lastTime = currentTime;
-        delta = deltaTime * 36; // adjust factor to maintain speed
+        delta = deltaTime * 36;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -2010,6 +2081,7 @@ window.onload = () => {
         slotUpgradePurchases = 0;
         unlockedAchievements = [];
         totalCriticalHits = 0;
+        nonCritStreak = 0;
         critUpgradePurchases = 0;
         critUpgradeCost = 0.5;
         critChanceEl.innerText = `Crit Chance: 5%`;
@@ -2098,9 +2170,9 @@ window.onload = () => {
                 return;
             }
             const json = atob(base64);
-            const saveData = JSON.parse(json);
+            const saveData = sanitizeSaveData(JSON.parse(json));
 
-            totalScore = saveData.score || 0;
+            totalScore = saveData.score;
             lifetimeScore = saveData.lifetimeScore || totalScore;
             scoreEl.innerText = "Score: " + formatNumber(totalScore);
 
@@ -2124,9 +2196,10 @@ window.onload = () => {
             totalUpgrades = saveData.totalUpgrades || (saveData.addBallPurchases || 0) + (saveData.slotUpgradePurchases || 0);
             slotUpgradePurchases = saveData.slotUpgradePurchases || 0;
             unlockedAchievements = saveData.unlockedAchievements || [];
-            totalCriticalHits = saveData.totalCriticalHits || 0;
-            critUpgradePurchases = saveData.critUpgradePurchases || 0;
-            critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
+            totalCriticalHits = saveData.totalCriticalHits;
+            nonCritStreak = saveData.nonCritStreak;
+            critUpgradePurchases = saveData.critUpgradePurchases;
+            critChanceEl.innerText = `Crit Chance: ${Math.min(50, 5 + critUpgradePurchases * 5)}%`;
             critUpgradeCost = saveData.critUpgradeCost || 0.5;
             critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
             autosaveInterval = saveData.autosaveInterval || 60000;
