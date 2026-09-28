@@ -1597,6 +1597,14 @@ window.onload = () => {
         for (const key of numberFields) out[key] = finiteNumber(out[key], key === "multiplier" || key === "prestigeShardMultiplier" || key === "wildernessMultiplier" ? 1 : 0, 0, Number.MAX_SAFE_INTEGER);
 
         out.balls = Math.min(out.balls, 100000);
+        // Keep exponent-like progression values finite and responsive even for tampered saves.
+        out.prestigeCount = Math.min(out.prestigeCount, 1000000);
+        out.lifetimePrestiges = Math.min(out.lifetimePrestiges, 1000000);
+        out.transcendCount = Math.min(out.transcendCount, 100);
+        out.autoPrestigeThreshold = Math.min(out.autoPrestigeThreshold, 100);
+        out.critUpgradePurchases = Math.min(out.critUpgradePurchases, 9);
+        out.nonCritStreak = Math.min(out.nonCritStreak, 19);
+        out.wildernessLevel = Math.min(out.wildernessLevel, 1000);
         out.autosaveInterval = [15000, 30000, 60000, 120000].includes(Number(out.autosaveInterval)) ? Number(out.autosaveInterval) : 60000;
         out.unlockedAchievements = Array.isArray(out.unlockedAchievements) ? out.unlockedAchievements.filter(v => typeof v === "string").slice(0, 1000) : [];
         out.fancyEffectsEnabled = out.fancyEffectsEnabled !== false;
