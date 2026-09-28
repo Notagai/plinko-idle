@@ -1611,7 +1611,7 @@ window.onload = () => {
 
         if (out.missionProgress && typeof out.missionProgress === "object" && !Array.isArray(out.missionProgress)) {
             out.missionProgress = {
-                currentMissionIndex: finiteInteger(out.missionProgress.currentMissionIndex, 0, 0, 1000),
+                currentMissionIndex: finiteInteger(out.missionProgress.currentMissionIndex, 0, 0, missions.length),
                 completedMissions: Array.isArray(out.missionProgress.completedMissions) ? out.missionProgress.completedMissions.filter(v => typeof v === "string").slice(0, 1000) : [],
                 allMissionsComplete: out.missionProgress.allMissionsComplete === true
             };
