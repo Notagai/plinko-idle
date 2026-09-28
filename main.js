@@ -22,6 +22,7 @@ window.onload = () => {
     let slotUpgradePurchases = 0;
     let unlockedAchievements = [];
     let totalCriticalHits = 0;
+    let nonCritStreak = 0; // Bad-luck protection: at most 20 scored balls between crits.
     let critUpgradePurchases = 0;
     let critUpgradeCost = 0.5;
     let transcendCount = 0;
@@ -71,6 +72,7 @@ window.onload = () => {
             slotUpgradePurchases,
             unlockedAchievements,
             totalCriticalHits,
+            nonCritStreak,
             critUpgradePurchases,
             critUpgradeCost,
             autosaveInterval,
@@ -876,7 +878,13 @@ window.onload = () => {
 
                 // Critical hit check
                 let critChance = Math.min(0.5, 0.05 + critUpgradePurchases * 0.05);
-                let isCrit = Math.random() < critChance;
+                const guaranteedCrit = nonCritStreak >= 19;
+                let isCrit = guaranteedCrit || Math.random() < critChance;
+                if (isCrit) {
+                    nonCritStreak = 0;
+                } else {
+                    nonCritStreak++;
+                }
                 if (isCrit) {
                     let critMultiplier = 2 + prestigeCount * 0.2;
                     scoreGained = Math.round(scoreGained * critMultiplier);
@@ -1574,6 +1582,7 @@ window.onload = () => {
         const out = { ...input };
         const integerFields = [
             "balls", "prestigeCount", "lifetimePrestiges", "totalBallsDropped", "totalUpgrades",
+            "nonCritStreak",
             "slotUpgradePurchases", "critUpgradePurchases", "transcendCount", "transcensionShards",
             "spentTranscensionShards", "wildernessLevel", "wildernessProgress", "buildingMaterials",
             "wildernessShards", "pegsRemoved"
@@ -1734,6 +1743,9 @@ window.onload = () => {
 
     if (save.totalCriticalHits !== undefined) {
         totalCriticalHits = save.totalCriticalHits;
+    }
+    if (save.nonCritStreak !== undefined) {
+        nonCritStreak = save.nonCritStreak;
     }
 
 
@@ -2061,6 +2073,7 @@ window.onload = () => {
         slotUpgradePurchases = 0;
         unlockedAchievements = [];
         totalCriticalHits = 0;
+        nonCritStreak = 0;
         critUpgradePurchases = 0;
         critUpgradeCost = 0.5;
         critChanceEl.innerText = `Crit Chance: 5%`;
@@ -2175,8 +2188,9 @@ window.onload = () => {
             totalUpgrades = saveData.totalUpgrades || (saveData.addBallPurchases || 0) + (saveData.slotUpgradePurchases || 0);
             slotUpgradePurchases = saveData.slotUpgradePurchases || 0;
             unlockedAchievements = saveData.unlockedAchievements || [];
-            totalCriticalHits = saveData.totalCriticalHits || 0;
-            critUpgradePurchases = saveData.critUpgradePurchases || 0;
+            totalCriticalHits = saveData.totalCriticalHits;
+            nonCritStreak = saveData.nonCritStreak;
+            critUpgradePurchases = saveData.critUpgradePurchases;
             critChanceEl.innerText = `Crit Chance: ${5 + critUpgradePurchases * 5}%`;
             critUpgradeCost = saveData.critUpgradeCost || 0.5;
             critUpgradeCostEl.innerText = formatNumber(critUpgradeCost);
