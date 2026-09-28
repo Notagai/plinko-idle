@@ -1555,6 +1555,63 @@ window.onload = () => {
         transcendProgressFill.style.width = transcendProgress + "%";
     }
 
+    // ----- SAVE VALIDATION -----
+    function finiteNumber(value, fallback, min = 0, max = Number.MAX_SAFE_INTEGER) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return fallback;
+        return Math.min(max, Math.max(min, n));
+    }
+
+    function finiteInteger(value, fallback, min = 0, max = Number.MAX_SAFE_INTEGER) {
+        return Math.floor(finiteNumber(value, fallback, min, max));
+    }
+
+    function sanitizeSaveData(input) {
+        if (!input || typeof input !== "object" || Array.isArray(input)) {
+            throw new Error("Save data must be an object");
+        }
+
+        const out = { ...input };
+        const integerFields = [
+            "balls", "prestigeCount", "lifetimePrestiges", "totalBallsDropped", "totalUpgrades",
+            "slotUpgradePurchases", "critUpgradePurchases", "transcendCount", "transcensionShards",
+            "spentTranscensionShards", "wildernessLevel", "wildernessProgress", "buildingMaterials",
+            "wildernessShards", "pegsRemoved"
+        ];
+        for (const key of integerFields) out[key] = finiteInteger(out[key], 0, 0, 100000000);
+
+        const numberFields = [
+            "score", "lifetimeScore", "multiplier", "addBallCost", "slotUpgradeCost", "critUpgradeCost",
+            "transcendCost", "prestigeShardMultiplier", "autoPrestigeThreshold", "wildernessMultiplier",
+            "pegRemovalCost"
+        ];
+        for (const key of numberFields) out[key] = finiteNumber(out[key], key === "multiplier" || key === "prestigeShardMultiplier" || key === "wildernessMultiplier" ? 1 : 0, 0, Number.MAX_SAFE_INTEGER);
+
+        out.balls = Math.min(out.balls, 100000);
+        out.autosaveInterval = [15000, 30000, 60000, 120000].includes(Number(out.autosaveInterval)) ? Number(out.autosaveInterval) : 60000;
+        out.unlockedAchievements = Array.isArray(out.unlockedAchievements) ? out.unlockedAchievements.filter(v => typeof v === "string").slice(0, 1000) : [];
+        out.fancyEffectsEnabled = out.fancyEffectsEnabled !== false;
+        out.soundEffectsEnabled = out.soundEffectsEnabled !== false;
+        out.prestigeUpgradesUnlocked = out.prestigeUpgradesUnlocked === true;
+        out.transcendUpgradesUnlocked = out.transcendUpgradesUnlocked === true;
+        out.automationUnlocked = out.automationUnlocked === true;
+        out.autoPrestigePurchased = out.autoPrestigePurchased === true;
+        out.hasReached100k = out.hasReached100k === true;
+        out.wildernessUnlocked = out.wildernessUnlocked === true;
+        out.lastSaveTime = finiteNumber(out.lastSaveTime, Date.now(), 0, Date.now());
+
+        if (out.missionProgress && typeof out.missionProgress === "object" && !Array.isArray(out.missionProgress)) {
+            out.missionProgress = {
+                currentMissionIndex: finiteInteger(out.missionProgress.currentMissionIndex, 0, 0, 1000),
+                completedMissions: Array.isArray(out.missionProgress.completedMissions) ? out.missionProgress.completedMissions.filter(v => typeof v === "string").slice(0, 1000) : [],
+                allMissionsComplete: out.missionProgress.allMissionsComplete === true
+            };
+        } else {
+            out.missionProgress = null;
+        }
+        return out;
+    }
+
     // ----- MISSION SYSTEM -----
     // Initialize mission system
     const missionSystem = new MissionSystem();
@@ -1565,11 +1622,7 @@ window.onload = () => {
     if (rawSave) {
         try {
             const parsedSave = JSON.parse(rawSave);
-            if (parsedSave && typeof parsedSave === "object" && !Array.isArray(parsedSave)) {
-                save = parsedSave;
-            } else {
-                throw new Error("Save data is not an object");
-            }
+            save = sanitizeSaveData(parsedSave);
         } catch (error) {
             console.warn("Ignoring invalid local save data:", error);
             showSavePopup("Invalid save data ignored");
@@ -2095,9 +2148,9 @@ window.onload = () => {
                 return;
             }
             const json = atob(base64);
-            const saveData = JSON.parse(json);
+            const saveData = sanitizeSaveData(JSON.parse(json));
 
-            totalScore = saveData.score || 0;
+            totalScore = saveData.score;
             lifetimeScore = saveData.lifetimeScore || totalScore;
             scoreEl.innerText = "Score: " + formatNumber(totalScore);
 
