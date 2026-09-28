@@ -1860,31 +1860,75 @@ window.onload = () => {
         missionSystem.updateMissionDisplay();
     }
 
-    // Calculate offline progress
-    if (save.lastSaveTime !== undefined) {
-        const timeAway = Date.now() - save.lastSaveTime;
-        const hoursAway = timeAway / (1000 * 60 * 60);
-        const maxOfflineHours = 24; // Cap at 24 hours to prevent abuse
+    // Background/idle progression. Chrome throttles animation timers in hidden tabs,
+    // so calculate elapsed progress from wall-clock time instead of relying on requestAnimationFrame.
+    let lastOfflineProgressTime = Date.now();
 
-        if (hoursAway > 0.01 && hoursAway <= maxOfflineHours) { // More than 36 seconds
-            const ballsAtSave = save.balls || 1;
-            const ballsPerSecond = ballsAtSave * 0.5; // Estimate based on ball count (adjust as needed)
-            const offlineBalls = Math.floor(ballsPerSecond * timeAway / 1000);
-            const offlineScore = Math.floor(offlineBalls * 1000 * (save.multiplier || 1) * Math.pow(1.1, (save.transcensionShards || 0) + (save.spentTranscensionShards || 0))); // Rough estimate
+    function applyOfflineProgress(fromTimestamp, showPopup = true) {
+        const now = Date.now();
+        const elapsedMs = Math.max(0, now - Number(fromTimestamp || now));
+        const maxOfflineMs = 24 * 60 * 60 * 1000;
+        const creditedMs = Math.min(elapsedMs, maxOfflineMs);
 
-            if (offlineScore > 0) {
-                totalScore += offlineScore;
-                lifetimeScore += offlineScore;
-                totalBallsDropped += offlineBalls;
-                scoreEl.innerText = "Score: " + formatNumber(totalScore);
+        if (creditedMs < 1000) {
+            lastOfflineProgressTime = now;
+            return;
+        }
 
-                // Show offline progress popup
-                showSavePopup(`Welcome back! You earned ${formatNumber(offlineScore)} points and dropped ${formatNumber(offlineBalls)} balls while away (${hoursAway.toFixed(1)} hours)!`, () => {
-                    // Optional: Switch to stats tab or something
-                });
-            }
+        const ballsAtSave = Math.max(1, Number(balls.length || save.balls || 1));
+        const ballsPerSecond = ballsAtSave * 0.5;
+        const offlineBalls = Math.floor(ballsPerSecond * creditedMs / 1000);
+        const progressionMultiplier =
+            Math.max(1, Number(scoreMultiplier || 1)) *
+            Math.pow(1.1, Math.max(0, Number(transcensionShards || 0) + Number(spentTranscensionShards || 0)));
+        const offlineScore = Math.floor(
+            offlineBalls * 1000 * progressionMultiplier * Math.max(1, Number(wildernessMultiplier || 1))
+        );
+
+        if (offlineBalls > 0) {
+            totalScore += offlineScore;
+            lifetimeScore += offlineScore;
+            totalBallsDropped += offlineBalls;
+            scoreEl.innerText = "Score: " + formatNumber(totalScore);
+            updateButtonStates();
+            updateProgressBars();
+            checkAchievements();
+        }
+
+        lastOfflineProgressTime = now;
+
+        if (showPopup && offlineBalls > 0) {
+            const hoursAway = creditedMs / (1000 * 60 * 60);
+            const capped = elapsedMs > maxOfflineMs ? " (capped at 24h)" : "";
+            showSavePopup(
+                `Background progress: +${formatNumber(offlineScore)} points, +${formatNumber(offlineBalls)} balls over ${hoursAway.toFixed(1)}h${capped}.`
+            );
         }
     }
+
+    // Apply progress earned while the game was closed before starting the live loop.
+    applyOfflineProgress(save.lastSaveTime, true);
+
+    // When Chrome hides the tab, record the handoff point. When it becomes visible again,
+    // credit the whole hidden interval in one deterministic calculation.
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+            lastOfflineProgressTime = Date.now();
+            try {
+                localStorage.setItem("plinkoSave", JSON.stringify(createSaveData()));
+            } catch (error) {
+                console.error("Background save error:", error);
+            }
+            return;
+        }
+
+        applyOfflineProgress(lastOfflineProgressTime, true);
+        try {
+            localStorage.setItem("plinkoSave", JSON.stringify(createSaveData()));
+        } catch (error) {
+            console.error("Background progress save error:", error);
+        }
+    });
 
     // Set unlocked flags
     if (lifetimePrestiges > 0) {
