@@ -1960,9 +1960,10 @@ window.onload = () => {
     // ----- MAIN LOOP -----
     function loop() {
         const currentTime = performance.now();
-        const deltaTime = (currentTime - lastTime) / 1000;
+        // Clamp large frame gaps (tab switching/background throttling) so balls cannot tunnel through the board.
+        const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.05);
         lastTime = currentTime;
-        delta = deltaTime * 36; // adjust factor to maintain speed
+        delta = deltaTime * 36;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
