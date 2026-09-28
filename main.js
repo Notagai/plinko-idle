@@ -58,6 +58,54 @@ window.onload = () => {
         }
     }
 
+    function createSaveData() {
+        return {
+            score: totalScore,
+            lifetimeScore,
+            multiplier: scoreMultiplier,
+            addBallCost,
+            slotUpgradeCost,
+            balls: balls.length,
+            prestigeCount,
+            lifetimePrestiges,
+            totalBallsDropped,
+            totalUpgrades,
+            slotUpgradePurchases,
+            unlockedAchievements,
+            totalCriticalHits,
+            critUpgradePurchases,
+            critUpgradeCost,
+            autosaveInterval,
+            transcendCount,
+            transcendCost,
+            transcensionShards,
+            spentTranscensionShards,
+            prestigeUpgradesUnlocked,
+            transcendUpgradesUnlocked,
+            automationUnlocked,
+            autoPrestigePurchased,
+            autoPrestigeThreshold,
+            prestigeShardMultiplier,
+            hasReached100k,
+            fancyEffectsEnabled,
+            soundEffectsEnabled,
+            wildernessUnlocked,
+            wildernessLevel,
+            wildernessProgress,
+            buildingMaterials,
+            wildernessShards,
+            wildernessMultiplier,
+            pegsRemoved,
+            pegRemovalCost,
+            lastSaveTime: Date.now(),
+            missionProgress: (typeof missionSystem !== "undefined" && missionSystem) ? {
+                currentMissionIndex: missionSystem.currentMissionIndex,
+                completedMissions: Array.from(missionSystem.completedMissions),
+                allMissionsComplete: missionSystem.allMissionsComplete
+            } : null
+        };
+    }
+
     // Initialize audio
     initAudio();
 
@@ -65,40 +113,7 @@ window.onload = () => {
         if (autosaveTimer) clearInterval(autosaveTimer);
         autosaveTimer = setInterval(() => {
             try {
-                localStorage.setItem(
-                    "plinkoSave",
-                    JSON.stringify({
-                        score: totalScore,
-                        lifetimeScore: lifetimeScore,
-                        multiplier: scoreMultiplier,
-                        addBallCost: addBallCost,
-                        slotUpgradeCost: slotUpgradeCost,
-                        balls: balls.length,
-                        prestigeCount: prestigeCount,
-                        lifetimePrestiges: lifetimePrestiges,
-                        totalBallsDropped: totalBallsDropped,
-                        totalUpgrades: totalUpgrades,
-                        slotUpgradePurchases: slotUpgradePurchases,
-                        unlockedAchievements: unlockedAchievements,
-                        totalCriticalHits: totalCriticalHits,
-                        critUpgradePurchases: critUpgradePurchases,
-                        critUpgradeCost: critUpgradeCost,
-                        autosaveInterval: autosaveInterval,
-                        transcendCount: transcendCount,
-                        transcendCost: transcendCost,
-                        spentTranscensionShards: spentTranscensionShards,
-                        prestigeShardMultiplier: prestigeShardMultiplier,
-                        hasReached100k: hasReached100k,
-                        fancyEffectsEnabled: fancyEffectsEnabled,
-                        soundEffectsEnabled: soundEffectsEnabled,
-                        lastSaveTime: Date.now(),
-                        missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
-                            currentMissionIndex: missionSystem.currentMissionIndex,
-                            completedMissions: Array.from(missionSystem.completedMissions),
-                            allMissionsComplete: missionSystem.allMissionsComplete
-                        } : null
-                    })
-                );
+                localStorage.setItem("plinkoSave", JSON.stringify(createSaveData()));
 
                 showSavePopup("Game saved");
             }
@@ -132,7 +147,6 @@ window.onload = () => {
     const critChanceEl = document.getElementById("critChance");
     const prestigeUpgrades = document.getElementById("prestigeUpgrades");
     const transcendUpgrades = document.getElementById("transcendUpgrades");
-    const transcendBtn = document.getElementById("transcendBtn");
 
     // Wilderness UI elements
     const wildernessTab = document.querySelector('.tab[data-tab="wilderness"]');
@@ -482,6 +496,10 @@ window.onload = () => {
         makePegs();
         buildWalls();
         buildSlots();
+
+        for (let i = 0; i < slotUpgradePurchases; i++) {
+            for (let slot of slots) slot.points *= 2;
+        }
 
         // Reset all balls to prevent cheating
         for (let b of balls) {
@@ -1545,7 +1563,21 @@ window.onload = () => {
     const missionSystem = new MissionSystem();
 
     // ----- SAVE LOAD -----
-    const save = JSON.parse(localStorage.getItem("plinkoSave") || "{}");
+    let save = {};
+    const rawSave = localStorage.getItem("plinkoSave");
+    if (rawSave) {
+        try {
+            const parsedSave = JSON.parse(rawSave);
+            if (parsedSave && typeof parsedSave === "object" && !Array.isArray(parsedSave)) {
+                save = parsedSave;
+            } else {
+                throw new Error("Save data is not an object");
+            }
+        } catch (error) {
+            console.warn("Ignoring invalid local save data:", error);
+            showSavePopup("Invalid save data ignored");
+        }
+    }
 
     if (save.score !== undefined) {
         totalScore = save.score;
@@ -1742,6 +1774,14 @@ window.onload = () => {
         pegRemovalCost = save.pegRemovalCost;
     }
 
+    // Rebuild the board after loading saved peg-removal state.
+    makePegs();
+    buildWalls();
+    buildSlots();
+    for (let i = 0; i < slotUpgradePurchases; i++) {
+        for (let slot of slots) slot.points *= 2;
+    }
+
     // Load mission progress
     if (save.missionProgress !== undefined && typeof missionSystem !== 'undefined' && missionSystem) {
         missionSystem.currentMissionIndex = save.missionProgress.currentMissionIndex || 0;
@@ -1911,54 +1951,7 @@ window.onload = () => {
     const manualSaveBtn = document.getElementById("manualSaveBtn");
     manualSaveBtn.addEventListener("click", () => {
         try {
-            localStorage.setItem(
-                "plinkoSave",
-                JSON.stringify({
-                    score: totalScore,
-                    lifetimeScore: lifetimeScore,
-                    multiplier: scoreMultiplier,
-                    addBallCost: addBallCost,
-                    slotUpgradeCost: slotUpgradeCost,
-                    balls: balls.length,
-                    prestigeCount: prestigeCount,
-                    lifetimePrestiges: lifetimePrestiges,
-                    totalBallsDropped: totalBallsDropped,
-                    totalUpgrades: totalUpgrades,
-                    slotUpgradePurchases: slotUpgradePurchases,
-                    unlockedAchievements: unlockedAchievements,
-                    totalCriticalHits: totalCriticalHits,
-                    critUpgradePurchases: critUpgradePurchases,
-                    critUpgradeCost: critUpgradeCost,
-                    autosaveInterval: autosaveInterval,
-                    transcendCount: transcendCount,
-                    transcendCost: transcendCost,
-                    transcensionShards: transcensionShards,
-                    spentTranscensionShards: spentTranscensionShards,
-                    prestigeUpgradesUnlocked: prestigeUpgradesUnlocked,
-                    transcendUpgradesUnlocked: transcendUpgradesUnlocked,
-                    automationUnlocked: automationUnlocked,
-                    autoPrestigePurchased: autoPrestigePurchased,
-                    autoPrestigeThreshold: autoPrestigeThreshold,
-                    prestigeShardMultiplier: prestigeShardMultiplier,
-                    hasReached100k: hasReached100k,
-                    fancyEffectsEnabled: fancyEffectsEnabled,
-                    soundEffectsEnabled: soundEffectsEnabled,
-                    wildernessUnlocked: wildernessUnlocked,
-                    wildernessLevel: wildernessLevel,
-                    wildernessProgress: wildernessProgress,
-                    buildingMaterials: buildingMaterials,
-                    wildernessShards: wildernessShards,
-                    wildernessMultiplier: wildernessMultiplier,
-                    pegsRemoved: pegsRemoved,
-                    pegRemovalCost: pegRemovalCost,
-                    lastSaveTime: Date.now(),
-                    missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
-                        currentMissionIndex: missionSystem.currentMissionIndex,
-                        completedMissions: Array.from(missionSystem.completedMissions),
-                        allMissionsComplete: missionSystem.allMissionsComplete
-                    } : null
-                })
-            );
+            localStorage.setItem("plinkoSave", JSON.stringify(createSaveData()));
 
             showSavePopup("Game saved");
         }
@@ -2001,6 +1994,16 @@ window.onload = () => {
         updatePrestigeTabVisibility();
 
         prestigeCount = 0;
+        lifetimePrestiges = 0;
+
+        wildernessUnlocked = false;
+        wildernessLevel = 0;
+        wildernessProgress = 0;
+        buildingMaterials = 0;
+        wildernessShards = 0;
+        wildernessMultiplier = 1.0;
+        pegsRemoved = 0;
+        pegRemovalCost = 100;
 
         totalBallsDropped = 0;
         totalUpgrades = 0;
@@ -2031,6 +2034,8 @@ window.onload = () => {
         prestigeShardMultiplier = 1;
         autosaveInterval = 60000;
         autosaveIntervalEl.value = autosaveInterval;
+        updateWildernessTabVisibility();
+        updateWildernessUI();
 
         // Reset mission progress
         if (typeof missionSystem !== 'undefined' && missionSystem) {
@@ -2074,50 +2079,7 @@ window.onload = () => {
     });
 
     doExportBtn.addEventListener("click", () => {
-        const saveData = {
-            score: totalScore,
-            lifetimeScore: lifetimeScore,
-            multiplier: scoreMultiplier,
-            addBallCost: addBallCost,
-            slotUpgradeCost: slotUpgradeCost,
-            balls: balls.length,
-            prestigeCount: prestigeCount,
-            lifetimePrestiges: lifetimePrestiges,
-            totalBallsDropped: totalBallsDropped,
-            totalUpgrades: totalUpgrades,
-            slotUpgradePurchases: slotUpgradePurchases,
-            unlockedAchievements: unlockedAchievements,
-            totalCriticalHits: totalCriticalHits,
-            critUpgradePurchases: critUpgradePurchases,
-            critUpgradeCost: critUpgradeCost,
-            autosaveInterval: autosaveInterval,
-            transcendCount: transcendCount,
-            transcendCost: transcendCost,
-            transcensionShards: transcensionShards,
-            spentTranscensionShards: spentTranscensionShards,
-            prestigeUpgradesUnlocked: prestigeUpgradesUnlocked,
-            transcendUpgradesUnlocked: transcendUpgradesUnlocked,
-            automationUnlocked: automationUnlocked,
-            autoPrestigePurchased: autoPrestigePurchased,
-            autoPrestigeThreshold: autoPrestigeThreshold,
-            prestigeShardMultiplier: prestigeShardMultiplier,
-            hasReached100k: hasReached100k,
-            fancyEffectsEnabled: fancyEffectsEnabled,
-            soundEffectsEnabled: soundEffectsEnabled,
-            wildernessUnlocked: wildernessUnlocked,
-            wildernessLevel: wildernessLevel,
-            wildernessProgress: wildernessProgress,
-            buildingMaterials: buildingMaterials,
-            wildernessShards: wildernessShards,
-            wildernessMultiplier: wildernessMultiplier,
-            pegsRemoved: pegsRemoved,
-            pegRemovalCost: pegRemovalCost,
-            missionProgress: (typeof missionSystem !== 'undefined' && missionSystem) ? {
-                currentMissionIndex: missionSystem.currentMissionIndex,
-                completedMissions: Array.from(missionSystem.completedMissions),
-                allMissionsComplete: missionSystem.allMissionsComplete
-            } : null
-        };
+        const saveData = createSaveData();
         const json = JSON.stringify(saveData);
         const base64 = btoa(json);
         saveDataTextarea.value = base64;
