@@ -147,7 +147,7 @@
                 const dy = this.y - p.y;
                 const dist = Math.hypot(dx, dy);
 
-                if (dist < this.r + p.r) {
+                if (dist > 0 && dist < this.r + p.r) {
                     const overlap = this.r + p.r - dist;
                     const nx = dx / dist;
                     const ny = dy / dist;
