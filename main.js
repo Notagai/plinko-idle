@@ -51,11 +51,9 @@ window.onload = () => {
     let pegsRemoved = 0;
     let pegRemovalCost = 100;
 
-    //random easter egg (will never implement)
-    function easterEgg(){
-        if (easterEgg){
-            console.log("easter egg")
-        }
+    // Reserved hook for future easter eggs. Keep it side-effect free until a feature is added.
+    function easterEgg() {
+        return false;
     }
 
     function createSaveData() {
@@ -322,7 +320,8 @@ window.onload = () => {
 
         // Calculate exponential rewards based on wilderness level
         const baseMaterials = Math.pow(2, wildernessLevel) * 10;
-        const baseShards = Math.floor(Math.pow(1.5, wildernessLevel) * 0.1);
+        // Early exploration should always feel rewarding; scaling starts after the guaranteed first shard.
+        const baseShards = Math.max(1, Math.floor(Math.pow(1.5, wildernessLevel) * 0.1));
         const baseMultiplier = 1 + (wildernessLevel * 0.01);
 
         // Apply some randomness
@@ -501,12 +500,10 @@ window.onload = () => {
             for (let slot of slots) slot.points *= 2;
         }
 
-        // Reset all balls to prevent cheating
+        // Preserve active balls across resizes instead of teleporting/resetting them.
         for (let b of balls) {
-            b.x = canvas.width / 2;
-            b.y = 50;
-            b.vx = (Math.random() - 0.5) * 6;
-            b.vy = 1 + Math.random() * 2;
+            b.x = Math.min(canvas.width - b.r, Math.max(b.r, b.x));
+            b.y = Math.min(canvas.height - b.r, Math.max(0, b.y));
         }
     }
 
@@ -622,7 +619,7 @@ window.onload = () => {
                 const dy = this.y - p.y;
                 const dist = Math.hypot(dx, dy);
 
-                if (dist < this.r + p.r) {
+                if (dist > 0 && dist < this.r + p.r) {
                     const overlap = this.r + p.r - dist;
                     const nx = dx / dist;
                     const ny = dy / dist;
@@ -705,7 +702,7 @@ window.onload = () => {
 
         const dist = Math.hypot(dx, dy);
 
-        if (dist < ball.r) {
+        if (dist > 0 && dist < ball.r) {
             const nx = dx / dist;
             const ny = dy / dist;
 
